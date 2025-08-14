@@ -45,16 +45,128 @@ public class SceneValidator : MonoBehaviour
 
     void Start()
     {
+        RunValidation();
+    }
+
+    public void RunValidation()
+    {
         ValidateEnvironmentGround();
         ValidatePlayer();
         ValidateBoss();
+        // Pusatkan aktor di tengah terrain sesuai permintaan
+        CenterActorsOnTerrain();
+        // Pastikan Player & Boss berada di permukaan tanah/terrain
+        AlignActorsToGround();
         ValidateArena();
         ValidateUI();
         ValidateAudio();
         ValidateCameraShake();
         ValidateNavMesh();
 
+        // Rapikan kamera agar tidak miring / salah arah
+        FixCameraAlignment();
+
         if (verbose) Debug.Log("[SceneValidator] Selesai memeriksa scene.");
+    }
+
+    // Memusatkan Player di tengah terrain dan meletakkan Boss berhadapan pada jarak tertentu mengikuti arah kamera
+    void CenterActorsOnTerrain()
+    {
+        if (!enableAutoFix) return;
+        var center = GetTerrainCenterOnSurface();
+        var player = GameObject.FindGameObjectWithTag("Player");
+        if (player)
+        {
+            player.transform.position = center;
+        }
+
+        var boss = FindFirst<BossController>(true);
+        if (boss)
+        {
+            Vector3 camDir = GetCameraFlatForward();
+            if (camDir.sqrMagnitude < 0.0001f) camDir = (player ? (player.transform.forward) : Vector3.forward);
+            camDir.y = 0f; camDir.Normalize();
+            float distance = 8f;
+            Vector3 targetPos = center + camDir * distance;
+            boss.transform.position = targetPos;
+            // Hadapkan boss ke player (horizontal)
+            Vector3 look = (center - boss.transform.position); look.y = 0f;
+            if (look.sqrMagnitude > 0.001f)
+                boss.transform.rotation = Quaternion.LookRotation(look.normalized, Vector3.up);
+        }
+    }
+
+    Vector3 GetCameraFlatForward()
+    {
+        var cam = Camera.main;
+        if (!cam) return Vector3.forward;
+        var f = cam.transform.forward; f.y = 0f; return f.sqrMagnitude > 0.0001f ? f.normalized : Vector3.forward;
+    }
+
+    // Menempatkan Player dan Boss ke permukaan tanah/terrain terdekat
+    void AlignActorsToGround()
+    {
+        try
+        {
+            var player = GameObject.FindGameObjectWithTag("Player");
+            if (player) AlignTransformToGround(player.transform, 0.05f);
+
+            var boss = FindFirst<BossController>(true);
+            if (boss) AlignTransformToGround(boss.transform, 0.05f);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[SceneValidator] Gagal menyelaraskan posisi dengan tanah: " + e.Message);
+        }
+    }
+
+    void AlignTransformToGround(Transform t, float extraHeight)
+    {
+        if (!t) return;
+        Vector3 pos = t.position;
+        float groundY = pos.y;
+
+        // Coba raycast dari atas ke bawah untuk dapatkan collider tanah/terrain paling akurat
+        Vector3 origin = new Vector3(pos.x, pos.y + 200f, pos.z);
+        if (Physics.Raycast(origin, Vector3.down, out var hitInfo, 500f))
+        {
+            groundY = hitInfo.point.y;
+        }
+        else
+        {
+            // Fallback: gunakan Terrain jika ada
+            var terrain = FindFirst<Terrain>(true);
+            if (terrain && terrain.terrainData != null)
+            {
+                groundY = terrain.SampleHeight(new Vector3(pos.x, 0f, pos.z)) + terrain.transform.position.y;
+            }
+            else
+            {
+                groundY = 0f; // fallback terakhir
+            }
+        }
+
+        float targetY = groundY + extraHeight;
+        if (Mathf.Abs(t.position.y - targetY) > 0.01f)
+        {
+            t.position = new Vector3(t.position.x, targetY, t.position.z);
+            if (verbose) Debug.Log($"[SceneValidator][AutoFix] Memindahkan '{t.name}' ke permukaan tanah (y={targetY:0.00}).");
+        }
+    }
+
+    // Mengambil titik pusat Terrain (di atas permukaan), fallback (0,0,0) jika tidak ada Terrain
+    Vector3 GetTerrainCenterOnSurface()
+    {
+        var terrain = FindFirst<Terrain>(true);
+        if (terrain && terrain.terrainData != null)
+        {
+            var size = terrain.terrainData.size;
+            var basePos = terrain.transform.position;
+            var centerXZ = new Vector3(basePos.x + size.x * 0.5f, 0f, basePos.z + size.z * 0.5f);
+            float y = terrain.SampleHeight(centerXZ) + basePos.y;
+            return new Vector3(centerXZ.x, y, centerXZ.z);
+        }
+        return Vector3.zero;
     }
 
     void ValidateEnvironmentGround()
@@ -64,6 +176,10 @@ public class SceneValidator : MonoBehaviour
         if (terrain && terrain.gameObject.activeInHierarchy)
         {
             if (verbose) Debug.Log("[SceneValidator] Terrain terdeteksi. Melewati pembuatan ground plane.");
+            // Tambahan: pastikan properti hutan dan dekorasi ada (Editor)
+#if UNITY_EDITOR
+            if (enableAutoFix) EnsureForestPropsEditor(terrain);
+#endif
             return;
         }
 
@@ -78,128 +194,10 @@ public class SceneValidator : MonoBehaviour
                 var oldPlane = GameObject.Find("Arena_Ground");
                 if (oldPlane) DestroyImmediate(oldPlane);
                 terrain = terrGO.GetComponent<Terrain>();
+                // Tambahkan properti hutan: bebatuan/kayu + pohon sederhana
+                EnsureForestPropsEditor(terrain);
             }
         }
-#endif
-
-#if UNITY_EDITOR
-    void ClearArenaCenterOnTerrain(Terrain terrain, float radiusNorm)
-    {
-        if (!terrain) return;
-        var tData = terrain.terrainData;
-        if (tData == null) return;
-
-        // Hapus pohon di area tengah
-        var trees = tData.treeInstances.ToList();
-        trees.RemoveAll(ti =>
-        {
-            var pos = new Vector2(ti.position.x - 0.5f, ti.position.z - 0.5f);
-            return pos.magnitude < radiusNorm;
-        });
-        tData.treeInstances = trees.ToArray();
-        terrain.Flush();
-
-        // Hapus rumput pada radius tengah
-        int layers = tData.detailPrototypes != null ? tData.detailPrototypes.Length : 0;
-        if (layers > 0)
-        {
-            int w = tData.detailWidth;
-            int h = tData.detailHeight;
-            int cx = w / 2;
-            int cy = h / 2;
-            int r = Mathf.RoundToInt(Mathf.Min(w, h) * radiusNorm);
-            for (int layer = 0; layer < layers; layer++)
-            {
-                var map = tData.GetDetailLayer(0, 0, w, h, layer);
-                for (int y = 0; y < h; y++)
-                {
-                    for (int x = 0; x < w; x++)
-                    {
-                        int dx = x - cx; int dy = y - cy;
-                        if (dx * dx + dy * dy <= r * r) map[y, x] = 0;
-                    }
-                }
-                tData.SetDetailLayer(0, 0, layer, map);
-            }
-        }
-    }
-
-    void ScatterRocksAndLogsEditor(Terrain terrain)
-    {
-        if (!terrain) return;
-        var tData = terrain.terrainData; if (!tData) return;
-
-        string basePath = "Assets/_AutoGenerated/Terrain";
-        if (!AssetDatabase.IsValidFolder("Assets/_AutoGenerated")) AssetDatabase.CreateFolder("Assets", "_AutoGenerated");
-        if (!AssetDatabase.IsValidFolder(basePath)) AssetDatabase.CreateFolder("Assets/_AutoGenerated", "Terrain");
-        string prefabFolder = basePath + "/Props";
-        string matFolder = basePath + "/Materials";
-        if (!AssetDatabase.IsValidFolder(prefabFolder)) AssetDatabase.CreateFolder(basePath, "Props");
-        if (!AssetDatabase.IsValidFolder(matFolder)) AssetDatabase.CreateFolder(basePath, "Materials");
-
-        // Materials
-        var rockMat = new Material(Shader.Find("Universal Render Pipeline/Lit")); rockMat.color = new Color(0.45f, 0.45f, 0.5f);
-        AssetDatabase.CreateAsset(rockMat, matFolder + "/Rock.mat");
-        var woodMat = new Material(Shader.Find("Universal Render Pipeline/Lit")); woodMat.color = new Color(0.32f, 0.22f, 0.12f);
-        AssetDatabase.CreateAsset(woodMat, matFolder + "/Wood.mat");
-
-        // Rock prefab (distorted sphere)
-        string rockPath = prefabFolder + "/AutoRock.prefab";
-        var rockPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(rockPath);
-        if (!rockPrefab)
-        {
-            var rock = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            rock.name = "AutoRock";
-            UnityEngine.Object.DestroyImmediate(rock.GetComponent<Collider>());
-            var mr = rock.GetComponent<MeshRenderer>(); if (mr) mr.sharedMaterial = rockMat;
-            rock.transform.localScale = new Vector3(1.6f, 1.1f, 1.2f);
-            rockPrefab = PrefabUtility.SaveAsPrefabAsset(rock, rockPath);
-            UnityEngine.Object.DestroyImmediate(rock);
-        }
-
-        // Log prefab (lying cylinder)
-        string logPath = prefabFolder + "/AutoLog.prefab";
-        var logPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(logPath);
-        if (!logPrefab)
-        {
-            var log = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            log.name = "AutoLog";
-            UnityEngine.Object.DestroyImmediate(log.GetComponent<Collider>());
-            var mr = log.GetComponent<MeshRenderer>(); if (mr) mr.sharedMaterial = woodMat;
-            log.transform.localScale = new Vector3(0.35f, 2.2f, 0.35f);
-            logPrefab = PrefabUtility.SaveAsPrefabAsset(log, logPath);
-            UnityEngine.Object.DestroyImmediate(log);
-        }
-
-        // Parent container
-        var container = GameObject.Find("Forest_Props") ?? new GameObject("Forest_Props");
-
-        // Scatter around ring area
-        var size = tData.size;
-        var rnd = new System.Random(123);
-        int count = 24;
-        for (int i = 0; i < count; i++)
-        {
-            float t = (float)i / count + (float)rnd.NextDouble() * 0.02f;
-            float angle = t * Mathf.PI * 2f;
-            float radius = Mathf.Lerp(0.22f, 0.35f, (float)rnd.NextDouble());
-            float nx = 0.5f + Mathf.Cos(angle) * radius;
-            float nz = 0.5f + Mathf.Sin(angle) * radius;
-            float wx = nx * size.x;
-            float wz = nz * size.z;
-            float wy = terrain.SampleHeight(new Vector3(wx, 0, wz));
-
-            bool placeRock = rnd.NextDouble() > 0.5;
-            var prefab = placeRock ? rockPrefab : logPrefab;
-            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            go.transform.SetParent(container.transform, true);
-            go.transform.position = new Vector3(wx, wy + (placeRock ? 0f : 0.15f), wz);
-            if (!placeRock)
-                go.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 90f);
-            float s = placeRock ? (0.8f + (float)rnd.NextDouble() * 1.6f) : (0.7f + (float)rnd.NextDouble() * 0.8f);
-            go.transform.localScale = Vector3.one * s;
-        }
-    }
 #endif
 
         // Setup ambience sinematik hutan (kabut, matahari, angin, audio ambience, post-processing)
@@ -349,6 +347,208 @@ public class SceneValidator : MonoBehaviour
     }
 
 #if UNITY_EDITOR
+    void ClearArenaCenterOnTerrain(Terrain terrain, float radiusNorm)
+    {
+        if (!terrain) return;
+        var tData = terrain.terrainData;
+        if (tData == null) return;
+
+        // Hapus pohon di area tengah
+        var trees = tData.treeInstances.ToList();
+        trees.RemoveAll(ti =>
+        {
+            var pos = new Vector2(ti.position.x - 0.5f, ti.position.z - 0.5f);
+            return pos.magnitude < radiusNorm;
+        });
+        tData.treeInstances = trees.ToArray();
+        terrain.Flush();
+
+        // Hapus rumput pada radius tengah
+        int layers = tData.detailPrototypes != null ? tData.detailPrototypes.Length : 0;
+        if (layers > 0)
+        {
+            int w = tData.detailWidth;
+            int h = tData.detailHeight;
+            int cx = w / 2;
+            int cy = h / 2;
+            int r = Mathf.RoundToInt(Mathf.Min(w, h) * radiusNorm);
+            for (int layer = 0; layer < layers; layer++)
+            {
+                var map = tData.GetDetailLayer(0, 0, w, h, layer);
+                for (int y = 0; y < h; y++)
+                {
+                    for (int x = 0; x < w; x++)
+                    {
+                        int dx = x - cx; int dy = y - cy;
+                        if (dx * dx + dy * dy <= r * r) map[y, x] = 0;
+                    }
+                }
+                tData.SetDetailLayer(0, 0, layer, map);
+            }
+        }
+    }
+
+    void TryReplaceBossWithModelEditor(BossController boss)
+    {
+        if (!boss) return;
+        // Jika sudah model (ada SkinnedMeshRenderer) abaikan
+        if (boss.GetComponentsInChildren<SkinnedMeshRenderer>(true).Length > 0) return;
+
+        try
+        {
+            // Cari prefab kandidat
+            string[] nameHints = new[] { "Lele", "Troll", "Ogre", "Boss", "Monster", "Enemy" };
+            var guids = new System.Collections.Generic.List<string>();
+            foreach (var hint in nameHints)
+            {
+                var hits = AssetDatabase.FindAssets($"t:Prefab {hint}");
+                if (hits != null && hits.Length > 0) guids.AddRange(hits);
+            }
+            GameObject chosenPrefab = null;
+            foreach (var guid in guids.Distinct())
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (!prefab) continue;
+                // Prefab dinilai cocok bila punya SkinnedMeshRenderer atau Animator
+                bool hasSkin = prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true).Length > 0;
+                bool hasAnimator = prefab.GetComponentInChildren<Animator>(true) != null;
+                if (hasSkin || hasAnimator)
+                {
+                    chosenPrefab = prefab;
+                    break;
+                }
+            }
+            if (!chosenPrefab) return;
+
+            var oldGO = boss.gameObject;
+            var pos = oldGO.transform.position;
+            var rot = oldGO.transform.rotation;
+
+            var newGO = (GameObject)PrefabUtility.InstantiatePrefab(chosenPrefab);
+            if (!newGO) return;
+            newGO.name = chosenPrefab.name;
+            newGO.transform.position = pos;
+            newGO.transform.rotation = rot;
+
+            // Pastikan komponen penting
+            var newBoss = newGO.GetComponent<BossController>();
+            if (!newBoss) newBoss = newGO.AddComponent<BossController>();
+            if (!newGO.GetComponent<BossHealth>()) newGO.AddComponent<BossHealth>();
+            if (!newGO.GetComponent<NavMeshAgent>()) newGO.AddComponent<NavMeshAgent>();
+            if (!newGO.GetComponent<CharacterController>()) newGO.AddComponent<CharacterController>();
+
+            // Pastikan anak Attacks ada
+            var attacksRoot = newGO.transform.Find("Attacks");
+            if (!attacksRoot)
+            {
+                var ar = new GameObject("Attacks");
+                ar.transform.SetParent(newGO.transform, false);
+                attacksRoot = ar.transform;
+            }
+            // Tambah serangan jika belum ada
+            if (newGO.GetComponentsInChildren<BossAttackBase>(true).Length == 0)
+            {
+                int playerLayer = 0; var player = GameObject.FindGameObjectWithTag("Player");
+                if (player) playerLayer = player.layer;
+                LayerMask hitMask = 0; if (playerLayer >= 0 && playerLayer <= 31) hitMask = (1 << playerLayer);
+                try { var c = attacksRoot.gameObject.AddComponent<CleaveAttack>(); c.hitMask = hitMask; } catch {}
+                try { var s = attacksRoot.gameObject.AddComponent<SlamAttack>(); s.hitMask = hitMask; } catch {}
+                try { var d = attacksRoot.gameObject.AddComponent<DashAttack>(); d.hitMask = hitMask; } catch {}
+            }
+
+            try { newGO.tag = "Boss"; } catch {}
+
+            // Hapus placeholder lama
+            Undo.RegisterFullObjectHierarchyUndo(oldGO, "Replace Boss");
+            GameObject.DestroyImmediate(oldGO);
+
+            if (verbose) Debug.Log($"[SceneValidator][AutoFix] Mengganti Boss placeholder dengan prefab model: {chosenPrefab.name}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[SceneValidator] Gagal mengganti Boss dengan model: " + e.Message);
+        }
+    }
+
+    void ScatterRocksAndLogsEditor(Terrain terrain)
+    {
+        if (!terrain) return;
+        var tData = terrain.terrainData; if (!tData) return;
+
+        string basePath = "Assets/_AutoGenerated/Terrain";
+        if (!AssetDatabase.IsValidFolder("Assets/_AutoGenerated")) AssetDatabase.CreateFolder("Assets", "_AutoGenerated");
+        if (!AssetDatabase.IsValidFolder(basePath)) AssetDatabase.CreateFolder("Assets/_AutoGenerated", "Terrain");
+        string prefabFolder = basePath + "/Props";
+        string matFolder = basePath + "/Materials";
+        if (!AssetDatabase.IsValidFolder(prefabFolder)) AssetDatabase.CreateFolder(basePath, "Props");
+        if (!AssetDatabase.IsValidFolder(matFolder)) AssetDatabase.CreateFolder(basePath, "Materials");
+
+        // Materials
+        var rockMat = new Material(Shader.Find("Universal Render Pipeline/Lit")); rockMat.color = new Color(0.45f, 0.45f, 0.5f);
+        AssetDatabase.CreateAsset(rockMat, matFolder + "/Rock.mat");
+        var woodMat = new Material(Shader.Find("Universal Render Pipeline/Lit")); woodMat.color = new Color(0.32f, 0.22f, 0.12f);
+        AssetDatabase.CreateAsset(woodMat, matFolder + "/Wood.mat");
+
+        // Rock prefab (distorted sphere)
+        string rockPath = prefabFolder + "/AutoRock.prefab";
+        var rockPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(rockPath);
+        if (!rockPrefab)
+        {
+            var rock = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            rock.name = "AutoRock";
+            UnityEngine.Object.DestroyImmediate(rock.GetComponent<Collider>());
+            var mr = rock.GetComponent<MeshRenderer>(); if (mr) mr.sharedMaterial = rockMat;
+            rock.transform.localScale = new Vector3(1.6f, 1.1f, 1.2f);
+            rockPrefab = PrefabUtility.SaveAsPrefabAsset(rock, rockPath);
+            UnityEngine.Object.DestroyImmediate(rock);
+        }
+
+        // Log prefab (lying cylinder)
+        string logPath = prefabFolder + "/AutoLog.prefab";
+        var logPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(logPath);
+        if (!logPrefab)
+        {
+            var log = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            log.name = "AutoLog";
+            UnityEngine.Object.DestroyImmediate(log.GetComponent<Collider>());
+            var mr = log.GetComponent<MeshRenderer>(); if (mr) mr.sharedMaterial = woodMat;
+            log.transform.localScale = new Vector3(0.35f, 2.2f, 0.35f);
+            logPrefab = PrefabUtility.SaveAsPrefabAsset(log, logPath);
+            UnityEngine.Object.DestroyImmediate(log);
+        }
+
+        // Parent container
+        var container = GameObject.Find("Forest_Props") ?? new GameObject("Forest_Props");
+
+        // Scatter around ring area
+        var size = tData.size;
+        var rnd = new System.Random(123);
+        int count = 24;
+        for (int i = 0; i < count; i++)
+        {
+            float t = (float)i / count + (float)rnd.NextDouble() * 0.02f;
+            float angle = t * Mathf.PI * 2f;
+            float radius = Mathf.Lerp(0.22f, 0.35f, (float)rnd.NextDouble());
+            float nx = 0.5f + Mathf.Cos(angle) * radius;
+            float nz = 0.5f + Mathf.Sin(angle) * radius;
+            float wx = nx * size.x;
+            float wz = nz * size.z;
+            float wy = terrain.SampleHeight(new Vector3(wx, 0, wz));
+
+            bool placeRock = rnd.NextDouble() > 0.5;
+            var prefab = placeRock ? rockPrefab : logPrefab;
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.transform.SetParent(container.transform, true);
+            go.transform.position = new Vector3(wx, wy + (placeRock ? 0f : 0.15f), wz);
+            if (!placeRock)
+                go.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 90f);
+            float s = placeRock ? (0.8f + (float)rnd.NextDouble() * 1.6f) : (0.7f + (float)rnd.NextDouble() * 0.8f);
+            go.transform.localScale = Vector3.one * s;
+        }
+    }
+
+#if UNITY_EDITOR
     GameObject EnsureForestTerrainEditor()
     {
         try
@@ -419,10 +619,7 @@ public class SceneValidator : MonoBehaviour
             }
             catch {}
 
-            // Tambahkan pepohonan dan rumput standar
-            EnsureForestVegetationEditor(terrGO.GetComponent<Terrain>(), basePath);
-
-            if (verbose) Debug.Log("[SceneValidator][AutoFix] Membuat Terrain hutan sederhana (400x60x400) + pepohonan/rumput standar.");
+            if (verbose) Debug.Log("[SceneValidator][AutoFix] Membuat Terrain hutan sederhana (400x60x400).");
             return terrGO;
         }
         catch (Exception e)
@@ -432,137 +629,9 @@ public class SceneValidator : MonoBehaviour
         }
     }
 #endif
-
-#if UNITY_EDITOR
-    void EnsureForestVegetationEditor(Terrain terrain, string basePath)
-    {
-        if (!terrain || terrain.terrainData == null) return;
-        var tData = terrain.terrainData;
-
-        // Pastikan folder
-        string prefabFolder = basePath + "/Prefabs";
-        string matFolder = basePath + "/Materials";
-        if (!AssetDatabase.IsValidFolder(prefabFolder)) AssetDatabase.CreateFolder(basePath, "Prefabs");
-        if (!AssetDatabase.IsValidFolder(matFolder)) AssetDatabase.CreateFolder(basePath, "Materials");
-
-        // Buat material sederhana
-        Material barkMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        barkMat.color = new Color(0.35f, 0.2f, 0.05f);
-        AssetDatabase.CreateAsset(barkMat, matFolder + "/Bark.mat");
-        Material leafMat = new Material(Shader.Find("Universal Render Pipeline/Nature/SpeedTree7"));
-        if (!leafMat.shader) leafMat.shader = Shader.Find("Universal Render Pipeline/Lit");
-        leafMat.color = new Color(0.2f, 0.5f, 0.2f);
-        AssetDatabase.CreateAsset(leafMat, matFolder + "/Leaves.mat");
-
-        // Buat prefab pohon sederhana (silinder + bola)
-        string treePrefabPath = prefabFolder + "/AutoTree.prefab";
-        GameObject treePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(treePrefabPath);
-        if (!treePrefab)
-        {
-            var root = new GameObject("AutoTree");
-            var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            trunk.name = "Trunk";
-            trunk.transform.SetParent(root.transform, false);
-            trunk.transform.localScale = new Vector3(0.3f, 2.5f, 0.3f); // height ~5
-            trunk.transform.localPosition = new Vector3(0, 2.5f, 0);
-            UnityEngine.Object.DestroyImmediate(trunk.GetComponent<Collider>());
-            var mr1 = trunk.GetComponent<MeshRenderer>();
-            if (mr1) mr1.sharedMaterial = barkMat;
-
-            var canopy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            canopy.name = "Canopy";
-            canopy.transform.SetParent(root.transform, false);
-            canopy.transform.localScale = new Vector3(3f, 2.2f, 3f);
-            canopy.transform.localPosition = new Vector3(0, 5.2f, 0);
-            UnityEngine.Object.DestroyImmediate(canopy.GetComponent<Collider>());
-            var mr2 = canopy.GetComponent<MeshRenderer>();
-            if (mr2) mr2.sharedMaterial = leafMat;
-
-            // Simpan sebagai prefab
-            treePrefab = PrefabUtility.SaveAsPrefabAsset(root, treePrefabPath);
-            UnityEngine.Object.DestroyImmediate(root);
-        }
-
-        // Tambahkan TreePrototype kalau belum ada
-        var prototypes = tData.treePrototypes != null ? tData.treePrototypes.ToList() : new System.Collections.Generic.List<TreePrototype>();
-        if (prototypes.Count == 0 || !prototypes.Any(p => p.prefab == treePrefab))
-        {
-            var tp = new TreePrototype();
-            tp.prefab = treePrefab;
-            prototypes.Add(tp);
-            tData.treePrototypes = prototypes.ToArray();
-        }
-
-        // Populate pohon jika belum ada
-        if (tData.treeInstanceCount < 50)
-        {
-            var rand = new System.Random(42);
-            int count = 400;
-            var size = tData.size;
-            var list = new System.Collections.Generic.List<TreeInstance>();
-            for (int i = 0; i < count; i++)
-            {
-                float nx = (float)rand.NextDouble();
-                float nz = (float)rand.NextDouble();
-                // Hindari pusat arena sedikit (untuk ruang boss fight)
-                Vector2 p = new Vector2(nx - 0.5f, nz - 0.5f);
-                if (p.magnitude < 0.15f) { i--; continue; }
-
-                float y01 = tData.GetInterpolatedHeight(nx, nz) / size.y;
-                var ti = new TreeInstance();
-                ti.prototypeIndex = 0;
-                ti.position = new Vector3(nx, Mathf.Clamp01(y01), nz);
-                ti.widthScale = 0.8f + (float)rand.NextDouble() * 0.8f;
-                ti.heightScale = 0.9f + (float)rand.NextDouble() * 1.0f;
-                ti.color = Color.white;
-                ti.lightmapColor = Color.white;
-                list.Add(ti);
-            }
-            tData.treeInstances = list.ToArray();
-            terrain.Flush();
-        }
-
-        // Tambah detail rumput billboard menggunakan Grass.png
-        string grassTexPath = basePath + "/Grass.png";
-        var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>(grassTexPath);
-        if (grassTex)
-        {
-            var detailProtos = tData.detailPrototypes != null ? tData.detailPrototypes.ToList() : new System.Collections.Generic.List<DetailPrototype>();
-            if (detailProtos.Count == 0)
-            {
-                var dp = new DetailPrototype();
-                dp.usePrototypeMesh = false;
-                dp.renderMode = DetailRenderMode.GrassBillboard;
-                dp.prototypeTexture = grassTex;
-                dp.healthyColor = new Color(0.4f, 0.8f, 0.4f);
-                dp.dryColor = new Color(0.6f, 0.6f, 0.4f);
-                dp.minWidth = 0.5f; dp.maxWidth = 1.1f;
-                dp.minHeight = 0.5f; dp.maxHeight = 1.2f;
-                dp.noiseSpread = 0.3f;
-                detailProtos.Add(dp);
-                tData.detailPrototypes = detailProtos.ToArray();
-            }
-
-            // Atur resolusi detail dan isi density
-            tData.SetDetailResolution(1024, 16);
-            int w = tData.detailWidth;
-            int h = tData.detailHeight;
-            var layer0 = new int[h, w];
-            var rnd = new System.Random(99);
-            for (int y = 0; y < h; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    // Patchy grass density
-                    float fx = (float)x / w; float fy = (float)y / h;
-                    float noise = Mathf.PerlinNoise(fx * 6f, fy * 6f);
-                    int density = noise > 0.5f ? (int)(8 + rnd.Next(0, 8)) : (int)(rnd.Next(0, 2));
-                    layer0[y, x] = density;
-                }
-            }
-            tData.SetDetailLayer(0, 0, 0, layer0);
-        }
-    }
+#else
+    // Stub non-Editor: no-op agar pemanggilan tetap valid di build runtime
+    void TryReplaceBossWithModelEditor(BossController boss) { }
 #endif
 
     void ValidatePlayer()
@@ -664,6 +733,14 @@ public class SceneValidator : MonoBehaviour
             }
             if (!boss) return;
         }
+        
+#if UNITY_EDITOR
+        // Jika Boss masih placeholder (tidak ada SkinnedMeshRenderer), coba ganti dengan prefab model 3D yang cocok
+        if (enableAutoFix)
+        {
+            TryReplaceBossWithModelEditor(boss);
+        }
+#endif
         var health = boss.GetComponent<BossHealth>();
         if (!health) Debug.LogError("[SceneValidator] BossHealth tidak ditemukan pada Boss.");
         if (!boss.GetComponent<NavMeshAgent>()) Debug.LogWarning("[SceneValidator] Boss tidak memiliki NavMeshAgent.");
@@ -847,6 +924,61 @@ public class SceneValidator : MonoBehaviour
         if (!NavMesh.SamplePosition(boss.transform.position, out var hit, 1.0f, NavMesh.AllAreas))
         {
             Debug.LogWarning("[SceneValidator] Boss tidak berada di atas NavMesh. Pastikan NavMesh sudah di-Bake dan posisi Boss berada di area hijau.");
+            // Editor: coba auto-bake NavMesh jika diizinkan
+            if (enableAutoFix)
+            {
+#if UNITY_EDITOR
+                try
+                {
+                    UnityEditor.AI.NavMeshBuilder.ClearAllNavMeshes();
+                    UnityEditor.AI.NavMeshBuilder.BuildNavMeshAsync();
+                    if (verbose) Debug.Log("[SceneValidator][AutoFix] Melakukan bake NavMesh otomatis (Editor).");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("[SceneValidator] Gagal auto-bake NavMesh: " + e.Message);
+                }
+#endif
+            }
+            // Coba cari titik NavMesh terdekat dengan radius lebih besar, lalu pindahkan Boss ke sana
+            float[] radii = new float[] { 10f, 25f, 50f, 100f };
+            bool moved = false;
+            foreach (var r in radii)
+            {
+                if (NavMesh.SamplePosition(boss.transform.position, out hit, r, NavMesh.AllAreas))
+                {
+                    if (agent.Warp(hit.position))
+                    {
+                        if (verbose) Debug.Log($"[SceneValidator][AutoFix] Memindahkan Boss ke NavMesh terdekat dalam radius {r}.");
+                        moved = true;
+                        break;
+                    }
+                }
+            }
+            if (!moved)
+            {
+                // Coba di sekitar Player
+                var player = GameObject.FindGameObjectWithTag("Player");
+                if (player)
+                {
+                    foreach (var r in radii)
+                    {
+                        if (NavMesh.SamplePosition(player.transform.position, out hit, r, NavMesh.AllAreas))
+                        {
+                            if (agent.Warp(hit.position))
+                            {
+                                if (verbose) Debug.Log($"[SceneValidator][AutoFix] Memindahkan Boss ke NavMesh di sekitar Player (radius {r}).");
+                                moved = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (!moved && verbose)
+            {
+                Debug.Log("[SceneValidator][AutoFix] Tidak ditemukan NavMesh terdekat untuk memindahkan Boss.");
+            }
         }
     }
 
@@ -976,6 +1108,106 @@ public class SceneValidator : MonoBehaviour
         return null;
     }
 
+    // Merapikan kamera utama agar tidak miring (roll) dan menghadap ke Player
+    void FixCameraAlignment()
+    {
+        var cam = Camera.main;
+        if (!cam) return;
+
+        // Jika Cinemachine aktif, biarkan Cinemachine mengatur kamera
+        var cmBrain = cam.GetComponent("CinemachineBrain");
+        if (preferCinemachine && cmBrain != null) return;
+
+        // Coba target ke Player
+        var player = GameObject.FindGameObjectWithTag("Player");
+        if (player)
+        {
+            // Posisikan kamera sedikit di belakang dan atas player
+            var desiredPos = player.transform.position + new Vector3(0f, 2f, -5f);
+            cam.transform.position = desiredPos;
+            var lookDir = player.transform.position - cam.transform.position;
+            if (lookDir.sqrMagnitude > 0.001f)
+            {
+                cam.transform.rotation = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+                // Hilangkan roll
+                var e = cam.transform.eulerAngles;
+                cam.transform.eulerAngles = new Vector3(e.x, e.y, 0f);
+            }
+            cam.nearClipPlane = 0.1f;
+            cam.fieldOfView = Mathf.Clamp(cam.fieldOfView, 50f, 70f);
+        }
+    }
+
+#if UNITY_EDITOR
+    // Tambahan properti hutan sederhana: bebatuan/kayu + pohon procedural
+    void EnsureForestPropsEditor(Terrain terrain)
+    {
+        if (!terrain) return;
+        try
+        {
+            // Bersihkan dekorasi agar hanya tersisa tanah
+            CleanupForestDecorationsEditor();
+            // Tetap bersihkan area tengah (jaga arena rata)
+            ClearArenaCenterOnTerrain(terrain, 12f);
+            // Tambahkan dinding pembatas di tepi terrain agar tidak jatuh keluar
+            CreateBoundaryWallsEditor(terrain, 2f, 50f);
+            if (verbose) Debug.Log("[SceneValidator][AutoFix] Membersihkan dekorasi (tanpa pohon/props) dan menambahkan dinding pembatas tepi terrain.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[SceneValidator] Gagal membuat dekorasi hutan: " + e.Message);
+        }
+    }
+
+    // Hapus dekorasi yang pernah dibuat (pohon dan props) agar tinggal tanah saja
+    void CleanupForestDecorationsEditor()
+    {
+        var trees = GameObject.Find("Forest_Trees");
+        if (trees) UnityEngine.Object.DestroyImmediate(trees);
+        var props = GameObject.Find("Forest_Props");
+        if (props) UnityEngine.Object.DestroyImmediate(props);
+    }
+
+    // Buat 4 dinding BoxCollider di sekeliling terrain agar player/boss tidak jatuh keluar
+    void CreateBoundaryWallsEditor(Terrain terrain, float thickness, float height)
+    {
+        if (!terrain || terrain.terrainData == null) return;
+        var size = terrain.terrainData.size;
+        var basePos = terrain.transform.position;
+
+        var parent = GameObject.Find("TerrainBoundary") ?? new GameObject("TerrainBoundary");
+
+        // Hapus dinding lama jika ada
+        foreach (Transform c in parent.transform)
+        {
+            UnityEngine.Object.DestroyImmediate(c.gameObject);
+        }
+
+        float y = basePos.y + height * 0.5f;
+        float halfX = size.x * 0.5f;
+        float halfZ = size.z * 0.5f;
+
+        // Kiri
+        CreateWall(parent.transform, new Vector3(basePos.x - thickness * 0.5f, y, basePos.z + halfZ), new Vector3(thickness, height, size.z + thickness));
+        // Kanan
+        CreateWall(parent.transform, new Vector3(basePos.x + size.x + thickness * 0.5f, y, basePos.z + halfZ), new Vector3(thickness, height, size.z + thickness));
+        // Depan
+        CreateWall(parent.transform, new Vector3(basePos.x + halfX, y, basePos.z - thickness * 0.5f), new Vector3(size.x + thickness, height, thickness));
+        // Belakang
+        CreateWall(parent.transform, new Vector3(basePos.x + halfX, y, basePos.z + size.z + thickness * 0.5f), new Vector3(size.x + thickness, height, thickness));
+    }
+
+    void CreateWall(Transform parent, Vector3 position, Vector3 size)
+    {
+        var go = new GameObject("BoundaryWall");
+        go.transform.SetParent(parent, true);
+        go.transform.position = position;
+        var box = go.AddComponent<BoxCollider>();
+        box.size = size;
+        box.isTrigger = false;
+        try { UnityEditor.GameObjectUtility.SetStaticEditorFlags(go, UnityEditor.StaticEditorFlags.BatchingStatic | UnityEditor.StaticEditorFlags.NavigationStatic); } catch {}
+    }
+#endif
     // ====== AUTO-SPAWN PLACEHOLDERS ======
     GameObject CreateBasicPlayer()
     {
@@ -994,8 +1226,9 @@ public class SceneValidator : MonoBehaviour
 
             go.AddComponent<PlayerHealth>();
 
-            // Place at origin on ground
-            go.transform.position = Vector3.zero;
+            // Tempatkan di pusat Terrain agar tidak di ujung
+            go.transform.position = GetTerrainCenterOnSurface();
+            AlignTransformToGround(go.transform, 0.05f);
             return go;
         }
         catch (Exception e)
@@ -1046,10 +1279,19 @@ public class SceneValidator : MonoBehaviour
             try { var s = attacksRoot.AddComponent<SlamAttack>(); s.hitMask = hitMask; } catch {}
             try { var d = attacksRoot.AddComponent<DashAttack>(); d.hitMask = hitMask; } catch {}
 
-            // Posisi boss agak jauh dari player
-            Vector3 spawnPos = new Vector3(8f, 0f, 8f);
-            if (player) spawnPos = player.transform.position + new Vector3(8f, 0f, 8f);
+            // Posisi Boss berhadapan dengan Player di arah kamera pada jarak tetap
+            Vector3 center = GetTerrainCenterOnSurface();
+            Vector3 basis = (player ? player.transform.position : center);
+            Vector3 dir = GetCameraFlatForward();
+            if (dir.sqrMagnitude < 0.0001f) dir = Vector3.forward;
+            float distance = 8f;
+            Vector3 spawnPos = basis + dir * distance;
             go.transform.position = spawnPos;
+            // Putar boss menghadap ke Player/basis
+            Vector3 look = (basis - go.transform.position); look.y = 0f;
+            if (look.sqrMagnitude > 0.001f)
+                go.transform.rotation = Quaternion.LookRotation(look.normalized, Vector3.up);
+            AlignTransformToGround(go.transform, 0.05f);
 
             return go;
         }
@@ -1105,6 +1347,29 @@ public class SceneValidator : MonoBehaviour
             Debug.LogWarning("[SceneValidator] Gagal spawn Starter Assets Player: " + e.Message);
         }
         return null;
+    }
+
+    [MenuItem("Tools/Scene/Jalankan Scene Validator")]
+    static void RunSceneValidatorMenu()
+    {
+        try
+        {
+            var existing = FindFirst<SceneValidator>(true);
+            if (!existing)
+            {
+                var go = new GameObject("SceneValidator");
+                existing = go.AddComponent<SceneValidator>();
+                existing.verbose = true;
+                existing.enableAutoFix = true;
+                existing.preferCinemachine = true;
+            }
+            existing.RunValidation();
+            Debug.Log("[SceneValidator][Menu] Validasi scene dijalankan.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[SceneValidator] Gagal menjalankan validasi via menu: " + e.Message);
+        }
     }
 #endif
 }

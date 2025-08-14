@@ -38,6 +38,35 @@ public class ThirdPersonCamera : MonoBehaviour
     Vector3 currentCamPos;
     Quaternion currentCamRot;
 
+    // Helper methods to keep compatibility across Unity versions
+    static T FindFirst<T>(bool includeInactive = false) where T : UnityEngine.Object
+    {
+#if UNITY_2023_1_OR_NEWER
+        var mode = includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude;
+        return UnityEngine.Object.FindFirstObjectByType<T>(mode);
+#elif UNITY_2022_2_OR_NEWER
+        var arr = UnityEngine.Object.FindObjectsByType<T>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        return arr != null && arr.Length > 0 ? arr[0] : null;
+#else
+#pragma warning disable CS0618
+        return UnityEngine.Object.FindObjectOfType<T>(includeInactive);
+#pragma warning restore CS0618
+#endif
+    }
+
+    static T[] FindAllOfType<T>(bool includeInactive = false) where T : UnityEngine.Object
+    {
+#if UNITY_2023_1_OR_NEWER
+        return UnityEngine.Object.FindObjectsByType<T>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+#elif UNITY_2022_2_OR_NEWER
+        return UnityEngine.Object.FindObjectsByType<T>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+#else
+#pragma warning disable CS0618
+        return UnityEngine.Object.FindObjectsOfType<T>(includeInactive);
+#pragma warning restore CS0618
+#endif
+    }
+
     void Start()
     {
         if (lockCursor)
@@ -129,12 +158,12 @@ public class ThirdPersonCamera : MonoBehaviour
         GameObject player = GameObject.FindGameObjectWithTag(playerTag);
         if (!player)
         {
-            var ph = FindObjectOfType<PlayerHealth>(true);
+            var ph = FindFirst<PlayerHealth>(true);
             if (ph) player = ph.gameObject;
             if (!player)
             {
                 // cari berdasarkan nama "Player"
-                var all = FindObjectsOfType<Transform>(true);
+                var all = FindAllOfType<Transform>(true);
                 var found = System.Array.Find(all, t => string.Equals(t.name, "Player", System.StringComparison.OrdinalIgnoreCase));
                 if (found) player = found.gameObject;
             }
