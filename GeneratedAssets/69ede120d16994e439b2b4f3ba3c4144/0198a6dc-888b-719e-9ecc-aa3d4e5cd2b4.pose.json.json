@@ -1,0 +1,11 @@
+{
+    "asset": "69ede120d16994e439b2b4f3ba3c4144",
+    "fileName": "0198a6dc-888b-719e-9ecc-aa3d4e5cd2b4.pose.json",
+    "prompt": "epic boss fight animation",
+    "negativePrompt": "",
+    "model": "a9c27ca4-3ec9-43e8-96cd-ee891aba64c5",
+    "modelName": "Text to Motion",
+    "customSeed": 405642631,
+    "w3CTraceId": "ca922fcd3fddcdfb6e2cf821759079b7",
+    "isTrimmed": false
+}
