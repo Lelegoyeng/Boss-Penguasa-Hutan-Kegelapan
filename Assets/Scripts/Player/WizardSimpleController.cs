@@ -20,6 +20,7 @@ public class WizardSimpleController : MonoBehaviour
 
     [Header("Combat")]
     public Transform spellCastPoint;
+    public GameObject castingEffectPrefab; // Prefab untuk efek lingkaran sihir
     private float _lastAttackTime;
     private bool _isDefending;
     private bool _isAttacking;
@@ -230,35 +231,55 @@ public class WizardSimpleController : MonoBehaviour
                 Debug.Log("[OnAttack] Cast sound played.");
             }
 
-            if (currentSpell.projectilePrefab != null)
-            {
-                GameObject projectileGO = Instantiate(currentSpell.projectilePrefab, spellCastPoint.position, spellCastPoint.rotation);
-                projectileGO.transform.localScale *= currentSpell.projectileScale;
-                Projectile p = projectileGO.GetComponent<Projectile>();
-                if (p != null)
-                {
-                    Debug.Log("[OnAttack] Projectile component found. Assigning stats.");
-                    p.speed = currentSpell.speed;
-                    p.lifeTime = currentSpell.lifeTime;
-                    p.hitEffect = currentSpell.hitEffect;
-                    p.hitSound = currentSpell.hitSound;
-                    p.hitEffectScale = currentSpell.hitEffectScale;
-                }
-                else
-                {
-                    Debug.LogError($"[OnAttack] CRITICAL: Projectile prefab '{currentSpell.projectilePrefab.name}' is MISSING the 'Projectile.cs' script!");
-                }
-            }
-            else
-            {
-                Debug.LogError($"[OnAttack] CRITICAL: The spell '{currentSpell.spellName}' has a NULL projectilePrefab!");
-            }
+            // Panggil FireProjectile setelah jeda singkat agar sinkron dengan animasi
+            Invoke(nameof(FireProjectileWrapper), 0.2f);
             
             Invoke(nameof(ResetAttack), 0.5f);
         }
         else
         {
             Debug.LogWarning($"[OnAttack] Spell '{currentSpell.spellName}' is on cooldown.");
+        }
+    }
+
+    private void FireProjectileWrapper()
+    {
+        FireProjectile(_spells[_currentSpellIndex]);
+    }
+
+    private void FireProjectile(Spell currentSpell)
+    {
+        // Munculkan efek lingkaran sihir di kaki karakter
+        if (castingEffectPrefab != null)
+        {
+            // Posisikan di kaki pemain (y=0) dan jangan jadikan anak dari pemain
+            Vector3 spawnPosition = new Vector3(transform.position.x, 0.05f, transform.position.z);
+            GameObject magicCircle = Instantiate(castingEffectPrefab, spawnPosition, Quaternion.identity, null);
+            Destroy(magicCircle, 1.5f); // Hapus efek setelah 1.5 detik
+        }
+
+        if (currentSpell.projectilePrefab != null)
+        {
+            GameObject projectileGO = Instantiate(currentSpell.projectilePrefab, spellCastPoint.position, _cameraTransform.rotation);
+            projectileGO.transform.localScale *= currentSpell.projectileScale;
+
+            Projectile p = projectileGO.GetComponent<Projectile>();
+            if (p != null)
+            {
+                p.speed = currentSpell.speed;
+                p.lifeTime = currentSpell.lifeTime;
+                p.hitEffect = currentSpell.hitEffect;
+                p.hitSound = currentSpell.hitSound;
+                p.hitEffectScale = currentSpell.hitEffectScale;
+            }
+            else
+            {
+                Debug.LogError($"[FireProjectile] CRITICAL: Projectile prefab '{currentSpell.projectilePrefab.name}' is MISSING the 'Projectile.cs' script!");
+            }
+        }
+        else
+        {
+            Debug.LogError($"[FireProjectile] CRITICAL: The spell '{currentSpell.spellName}' has a NULL projectilePrefab!");
         }
     }
 

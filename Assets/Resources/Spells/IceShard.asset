@@ -18,8 +18,8 @@ MonoBehaviour:
   projectilePrefab: {fileID: 161766660727748596, guid: 05ce920d629922a4eb4795ef7494ce5c, type: 3}
   speed: 25
   lifeTime: 3
-  projectileScale: 2
+  projectileScale: 0.5
   castSound: {fileID: 0}
   hitEffect: {fileID: 4924508274929071776, guid: 0edef91621bb6b34384ccc9dbb98729c, type: 3}
-  hitEffectScale: 2.5
+  hitEffectScale: 1
   hitSound: {fileID: 0}

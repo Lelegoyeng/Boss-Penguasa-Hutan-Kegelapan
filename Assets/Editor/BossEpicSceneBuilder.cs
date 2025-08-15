@@ -178,7 +178,19 @@ public static class BossEpicSceneBuilder
         if (controller) anim.runtimeAnimatorController = controller;
 
         if (!player.GetComponent<WizardAnimationController>()) player.AddComponent<WizardAnimationController>();
-        if (!player.GetComponent<WizardSimpleController>()) player.AddComponent<WizardSimpleController>();
+        var wizardController = player.GetComponent<WizardSimpleController>() ?? player.AddComponent<WizardSimpleController>();
+
+        // Tetapkan prefab efek lingkaran sihir
+        wizardController.castingEffectPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Magic effects pack/Prefabs/Magic circles/Magic circle.prefab");
+        GameObject magicCirclePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Magic effects pack/Prefabs/Magic circles/Magic circle.prefab");
+        if (magicCirclePrefab != null)
+        {
+            wizardController.castingEffectPrefab = magicCirclePrefab;
+        }
+        else
+        {
+            Debug.LogWarning("[BossEpic] Prefab lingkaran sihir tidak ditemukan di path yang ditentukan.");
+        }
 
         ApplyDefaultLitMaterials(player);
         return player;
@@ -423,7 +435,7 @@ public static class BossEpicSceneBuilder
         }
 
         // Define spells with dramatic scaling
-        if (!File.Exists($"{spellDir}/Fireball.asset"))
+        if (!File.Exists($"{spellDir}/ProjectileFree1.asset"))
         {
             CreateSpellAsset(
                 spellName: "Fireball",
@@ -432,8 +444,8 @@ public static class BossEpicSceneBuilder
                 hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Explosion.prefab",
                 castSoundPath: "Assets/Resources/Sounds/cast_fire.mp3",
                 hitSoundPath: "Assets/Resources/Sounds/hit_fire.mp3",
-                projectileScale: 2.5f,
-                hitEffectScale: 3.0f
+                projectileScale: 0.5f,
+                hitEffectScale: 1.0f
             );
         }
 
@@ -446,8 +458,8 @@ public static class BossEpicSceneBuilder
                 hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Snow hit.prefab",
                 castSoundPath: "Assets/Resources/Sounds/cast_ice.mp3",
                 hitSoundPath: "Assets/Resources/Sounds/hit_ice.mp3",
-                projectileScale: 2.0f,
-                hitEffectScale: 2.5f
+                projectileScale: 0.5f,
+                hitEffectScale: 1.0f
             );
         }
 
@@ -460,8 +472,8 @@ public static class BossEpicSceneBuilder
                 hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Electro hit.prefab",
                 castSoundPath: "Assets/Resources/Sounds/cast_electro.mp3",
                 hitSoundPath: "Assets/Resources/Sounds/hit_electro.mp3",
-                projectileScale: 1.5f,
-                hitEffectScale: 3.5f
+                projectileScale: 0.5f,
+                hitEffectScale: 1.0f
             );
         }
 
@@ -474,8 +486,8 @@ public static class BossEpicSceneBuilder
                 hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
                 castSoundPath: "",
                 hitSoundPath: "",
-                projectileScale: 2.0f,
-                hitEffectScale: 4.0f
+                projectileScale: 0.5f,
+                hitEffectScale: 1.0f
             );
         }
 
@@ -488,8 +500,8 @@ public static class BossEpicSceneBuilder
                 hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Stones hit.prefab",
                 castSoundPath: "",
                 hitSoundPath: "",
-                projectileScale: 3.0f,
-                hitEffectScale: 3.0f
+                projectileScale: 0.5f,
+                hitEffectScale: 1.0f
             );
         }
 
