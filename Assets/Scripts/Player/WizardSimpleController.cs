@@ -15,6 +15,7 @@ public class WizardSimpleController : MonoBehaviour
     public LayerMask groundMask;
 
     [Header("Combat")]
+    public Transform attackPoint;
     public float attackCooldown = 0.5f;
     private float _lastAttackTime;
     private int _attackCombo;
@@ -37,6 +38,8 @@ public class WizardSimpleController : MonoBehaviour
     private bool _isGrounded;
     private Vector3 _moveDirection;
     private float _currentSpeed;
+    private GameObject _defendEffectPrefab;
+    private GameObject _currentDefendEffect;
 
     void Awake()
     {
@@ -50,6 +53,12 @@ public class WizardSimpleController : MonoBehaviour
         }
         _audioSource.volume = 1.0f; // Set volume to max
         _defendSFX = Resources.Load<AudioClip>("shield");
+        _defendEffectPrefab = Resources.Load<GameObject>("Effects/Magic shield blue");
+
+        if (_defendEffectPrefab == null)
+        {
+            Debug.LogError("Defend effect prefab not found. Make sure 'Magic shield blue.prefab' is inside the 'Assets/Resources/Effects' folder.");
+        }
 
         
         // Initialize character controller if needed
@@ -167,10 +176,14 @@ public class WizardSimpleController : MonoBehaviour
         _isDefending = true;
         _animationController.SetDefending(true);
 
-        // Play SFX
         if (_defendSFX != null && _audioSource != null)
         {
             _audioSource.PlayOneShot(_defendSFX);
+        }
+
+        if (_defendEffectPrefab && _currentDefendEffect == null)
+        {
+            _currentDefendEffect = Instantiate(_defendEffectPrefab, transform.position, transform.rotation, transform);
         }
     }
 
@@ -178,6 +191,12 @@ public class WizardSimpleController : MonoBehaviour
     {
         _isDefending = false;
         _animationController.SetDefending(false);
+
+        if (_currentDefendEffect != null)
+        {
+            Destroy(_currentDefendEffect);
+            _currentDefendEffect = null;
+        }
     }
 
     void ResetAttack()
