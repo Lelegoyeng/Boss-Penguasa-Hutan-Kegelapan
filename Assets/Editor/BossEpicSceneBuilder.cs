@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -11,79 +12,19 @@ public static class BossEpicSceneBuilder
     {
         try
         {
-            // Scene baru minimal (tanpa Terrain)
             EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
-            // Buat arena sederhana: lantai + dinding
             var arenaRoot = new GameObject("Arena");
             CreateArenaFloorAndWalls(arenaRoot.transform, 120f, 120f, 0.5f, 6f, 1f);
 
-            // Kamera
-            var cam = Camera.main;
-            if (!cam)
-            {
-                cam = new GameObject("Main Camera").AddComponent<Camera>();
-                cam.tag = "MainCamera";
-            }
-            cam.transform.position = new Vector3(0, 12, -18);
-            cam.transform.rotation = Quaternion.Euler(15, 0, 0);
-
-            // Prefab Wizard
             var wizardPrefab = FindPrefab(new[] { "t:Prefab PolyArtWizardStandardMat", "t:Prefab Wizard", "t:Prefab Mage" },
                                           new[] { "Assets/WizzardPoliArt", "Assets/WizardPolyArt", "Assets" });
-            GameObject player = null;
-            if (wizardPrefab)
-            {
-                player = (GameObject)PrefabUtility.InstantiatePrefab(wizardPrefab);
-                player.name = "Player_Wizard";
-                player.tag = "Player";
-                player.transform.position = new Vector3(0f, 0.2f, 0f);
 
-                var cc = player.GetComponent<CharacterController>();
-                if (!cc) cc = player.AddComponent<CharacterController>();
+            GameObject player = SetupPlayer(wizardPrefab);
+            Camera mainCamera = SetupCamera(player.transform);
 
-                var anim = player.GetComponent<Animator>();
-                if (!anim) anim = player.AddComponent<Animator>();
+            SetupDragon();
 
-                var controller = BuildWizardAnimatorController();
-                if (controller) anim.runtimeAnimatorController = controller;
-
-                if (!player.GetComponent<WizardSimpleController>())
-                    player.AddComponent<WizardSimpleController>();
-
-                // Kamera follow
-                var follow = cam.GetComponent<ThirdPersonFollow>();
-                if (!follow) follow = cam.gameObject.AddComponent<ThirdPersonFollow>();
-                follow.target = player.transform;
-
-                // Material fallback jika ada renderer tanpa material
-                ApplyDefaultLitMaterials(player);
-            }
-            else
-            {
-                Debug.LogWarning("[BossEpic] Prefab Wizard tidak ditemukan.");
-            }
-
-            // Prefab Dragon
-            var dragonPrefab = FindPrefab(new[] { "t:Prefab Dragon", "t:Prefab BossDragon", "t:Prefab Wyvern" },
-                                          new[] { "Assets", "Assets/Dragons", "Assets/Creatures" });
-            if (dragonPrefab)
-            {
-                var dragon = (GameObject)PrefabUtility.InstantiatePrefab(dragonPrefab);
-                dragon.name = "Boss_Dragon";
-                dragon.transform.position = new Vector3(0f, 0.2f, 25f);
-
-                if (!dragon.GetComponent<DragonChaseAI>())
-                    dragon.AddComponent<DragonChaseAI>();
-
-                ApplyDefaultLitMaterials(dragon);
-            }
-            else
-            {
-                Debug.LogWarning("[BossEpic] Prefab Dragon tidak ditemukan.");
-            }
-
-            // Simpan scene
             System.IO.Directory.CreateDirectory("Assets/Scenes");
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             EditorSceneManager.SaveScene(scene, "Assets/Scenes/BossEpic.unity");
@@ -94,96 +35,175 @@ public static class BossEpicSceneBuilder
                 SceneView.lastActiveSceneView?.FrameSelected();
             }
 
-            Debug.Log("[BossEpic] Selesai membuat scene BossEpic (tanpa Terrain).");
+            Debug.Log("[BossEpic] Successfully created Boss Epic Scene.");
         }
         catch (System.Exception e)
         {
-            Debug.LogError("[BossEpic] Gagal: " + e.Message);
+            Debug.LogError("[BossEpic] Failed to create scene: " + e.Message + "\n" + e.StackTrace);
         }
     }
 
-    private static GameObject FindPrefab(string[] filters, string[] folders)
+    private static GameObject SetupPlayer(GameObject wizardPrefab)
     {
-        foreach (var f in filters)
+        if (!wizardPrefab)
         {
-            string[] guids = (folders != null && folders.Length > 0)
-                ? folders.Where(AssetDatabase.IsValidFolder).SelectMany(fd => AssetDatabase.FindAssets(f, new[] { fd })).ToArray()
-                : AssetDatabase.FindAssets(f);
-            foreach (var g in guids)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(g);
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (prefab) return prefab;
-            }
+            Debug.LogWarning("[BossEpic] Wizard prefab not found. Creating a placeholder.");
+            return new GameObject("Player_Placeholder");
         }
-        return null;
+
+        GameObject player = (GameObject)PrefabUtility.InstantiatePrefab(wizardPrefab);
+        player.name = "Player_Wizard";
+        player.tag = "Player";
+        player.transform.position = new Vector3(0f, 0.2f, 0f);
+
+        CharacterController cc = player.GetComponent<CharacterController>();
+        if (cc == null) 
+        {
+            cc = player.AddComponent<CharacterController>();
+        }
+        cc.center = new Vector3(0, 1, 0);
+        cc.height = 1.8f;
+        cc.radius = 0.3f;
+
+        var anim = player.GetComponent<Animator>() ?? player.AddComponent<Animator>();
+        var controller = BuildWizardAnimatorController();
+        if (controller) anim.runtimeAnimatorController = controller;
+
+        if (!player.GetComponent<WizardAnimationController>()) player.AddComponent<WizardAnimationController>();
+        if (!player.GetComponent<WizardSimpleController>()) player.AddComponent<WizardSimpleController>();
+
+        ApplyDefaultLitMaterials(player);
+        return player;
+    }
+
+    private static Camera SetupCamera(Transform target)
+    {
+        var cam = Camera.main;
+        if (!cam)
+        {
+            cam = new GameObject("Main Camera").AddComponent<Camera>();
+            cam.tag = "MainCamera";
+        }
+
+        var follow = cam.GetComponent<ThirdPersonFollow>() ?? cam.gameObject.AddComponent<ThirdPersonFollow>();
+        follow.target = target;
+        follow.distance = 5f;
+        follow.minDistance = 2f;
+        follow.maxDistance = 10f;
+        follow.height = 2f;
+        follow.minHeight = 1f;
+        follow.maxHeight = 3f;
+        follow.rotationSpeed = 5f;
+        follow.zoomSpeed = 10f;
+        follow.positionSmoothTime = 0.2f;
+        follow.rotationSmoothTime = 0.2f;
+        follow.collisionLayers = -1; // Collide with everything
+        follow.cameraRadius = 0.3f;
+
+        return cam;
+    }
+
+    private static void SetupDragon()
+    {
+        var dragonPrefab = FindPrefab(new[] { "t:Prefab Dragon", "t:Prefab BossDragon", "t:Prefab Wyvern" },
+                                      new[] { "Assets", "Assets/Dragons", "Assets/Creatures" });
+        if (dragonPrefab)
+        {
+            var dragon = (GameObject)PrefabUtility.InstantiatePrefab(dragonPrefab);
+            dragon.name = "Boss_Dragon";
+            dragon.transform.position = new Vector3(0f, 0.2f, 25f);
+            if (!dragon.GetComponent<DragonChaseAI>()) dragon.AddComponent<DragonChaseAI>();
+            ApplyDefaultLitMaterials(dragon);
+        }
+        else
+        {
+            Debug.LogWarning("[BossEpic] Dragon prefab not found.");
+        }
     }
 
     private static RuntimeAnimatorController BuildWizardAnimatorController()
     {
         string[] roots = new[] { "Assets/WizzardPoliArt", "Assets/WizardPolyArt" };
-        var valid = roots.Where(AssetDatabase.IsValidFolder).ToArray();
-        if (valid.Length == 0) return null;
-
-        var guids = valid.SelectMany(r => AssetDatabase.FindAssets("t:AnimationClip", new[] { r })).Distinct().ToArray();
-        var clips = guids.Select(g => AssetDatabase.GUIDToAssetPath(g))
+        var clips = roots.Where(AssetDatabase.IsValidFolder)
+                         .SelectMany(r => AssetDatabase.FindAssets("t:AnimationClip", new[] { r }))
+                         .Distinct()
+                         .Select(g => AssetDatabase.GUIDToAssetPath(g))
                          .Select(p => AssetDatabase.LoadAssetAtPath<AnimationClip>(p))
                          .Where(c => c && !c.name.StartsWith("__preview__"))
-                         .ToList();
+                         .ToDictionary(c => c.name.ToLowerInvariant(), c => c);
+
         if (clips.Count == 0) return null;
 
         System.IO.Directory.CreateDirectory("Assets/_Auto");
         string ctrlPath = "Assets/_Auto/WizardAuto.controller";
+        AssetDatabase.DeleteAsset(ctrlPath);
 
-        var existing = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(ctrlPath);
-        if (existing != null)
-        {
-            bool invalid = existing.layers == null || existing.layers.Length == 0 || existing.layers[0].stateMachine == null;
-            if (!invalid) return existing;
-            AssetDatabase.DeleteAsset(ctrlPath);
-        }
-
-        var ctrl = new UnityEditor.Animations.AnimatorController();
+        var ctrl = new AnimatorController();
         AssetDatabase.CreateAsset(ctrl, ctrlPath);
 
-        var layer = new UnityEditor.Animations.AnimatorControllerLayer
-        {
-            name = "Base Layer",
-            defaultWeight = 1f
-        };
-        var sm = new UnityEditor.Animations.AnimatorStateMachine { name = "Base Layer" };
+        ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
+        ctrl.AddParameter("Grounded", AnimatorControllerParameterType.Bool);
+        ctrl.AddParameter("Jump", AnimatorControllerParameterType.Trigger);
+        ctrl.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
+        ctrl.AddParameter("AttackCombo", AnimatorControllerParameterType.Int);
+        ctrl.AddParameter("Defend", AnimatorControllerParameterType.Bool);
+
+        var layer = new AnimatorControllerLayer { name = "Base Layer", defaultWeight = 1f };
+        var sm = new AnimatorStateMachine { name = "Base Layer", hideFlags = HideFlags.HideInHierarchy };
         AssetDatabase.AddObjectToAsset(sm, ctrl);
         layer.stateMachine = sm;
         ctrl.AddLayer(layer);
 
-        // BlendTree Idle/Move berdasarkan Speed bila tersedia
-        var idleClip = clips.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("idle") || c.name.ToLowerInvariant().Contains("wait"));
-        var moveClip = clips.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("run") || c.name.ToLowerInvariant().Contains("walk"));
+        // Locomotion
+        var idleClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("idle"));
+        var walkClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("walk"));
+        var runClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("run"));
 
-        if (idleClip != null && moveClip != null)
-        {
-            ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
-            var bt = new UnityEditor.Animations.BlendTree { name = "Locomotion", blendType = UnityEditor.Animations.BlendTreeType.Simple1D, useAutomaticThresholds = false, blendParameter = "Speed" };
-            AssetDatabase.AddObjectToAsset(bt, ctrl);
-            bt.AddChild(idleClip, 0f);
-            bt.AddChild(moveClip, 1f);
+        var locomotionTree = new BlendTree { name = "Locomotion", blendType = BlendTreeType.Simple1D, useAutomaticThresholds = false, blendParameter = "Speed" };
+        AssetDatabase.AddObjectToAsset(locomotionTree, ctrl);
+        if (idleClip) locomotionTree.AddChild(idleClip, 0f);
+        if (walkClip) locomotionTree.AddChild(walkClip, 0.5f);
+        if (runClip) locomotionTree.AddChild(runClip, 1f);
 
-            var locomotion = sm.AddState("Locomotion");
-            locomotion.motion = bt;
-            sm.defaultState = locomotion;
-        }
-        else
+        var locomotionState = sm.AddState("Locomotion");
+        locomotionState.motion = locomotionTree;
+        sm.defaultState = locomotionState;
+
+        // Attacks
+        for (int i = 1; i <= 3; i++)
         {
-            UnityEditor.Animations.AnimatorState defaultState = null;
-            foreach (var clip in clips)
+            var attackClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains($"attack_0{i}"));
+            if (attackClip)
             {
-                var st = sm.AddState(clip.name);
-                st.motion = clip;
-                if (defaultState == null) defaultState = st;
-                var lower = clip.name.ToLowerInvariant();
-                if (lower.Contains("idle") || lower.Contains("wait")) defaultState = st;
+                var attackState = sm.AddState($"Attack_{i}");
+                attackState.motion = attackClip;
+                var t = sm.AddAnyStateTransition(attackState);
+                t.AddCondition(AnimatorConditionMode.If, 0, "Attack");
+                t.AddCondition(AnimatorConditionMode.Equals, i, "AttackCombo");
+                t.hasExitTime = false;
+                t.duration = 0.1f;
+                var exitT = attackState.AddTransition(locomotionState);
+                exitT.hasExitTime = true;
+                exitT.exitTime = 0.8f;
+                exitT.duration = 0.25f;
             }
-            if (defaultState != null) sm.defaultState = defaultState;
+        }
+
+        // Jump
+        var jumpClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("jump"));
+        if (jumpClip)
+        {
+            var jumpState = sm.AddState("Jump");
+            jumpState.motion = jumpClip;
+            var t = sm.AddAnyStateTransition(jumpState);
+            t.AddCondition(AnimatorConditionMode.If, 0, "Jump");
+            t.hasExitTime = false;
+            t.duration = 0.1f;
+            var exitT = jumpState.AddTransition(locomotionState);
+            exitT.hasExitTime = true;
+            exitT.exitTime = 0.8f;
+            exitT.duration = 0.25f;
+            exitT.AddCondition(AnimatorConditionMode.If, 0, "Grounded");
         }
 
         AssetDatabase.SaveAssets();
@@ -191,43 +211,35 @@ public static class BossEpicSceneBuilder
         return ctrl;
     }
 
+    private static GameObject FindPrefab(string[] filters, string[] folders)
+    {
+        return filters.SelectMany(f => AssetDatabase.FindAssets(f, folders.Where(AssetDatabase.IsValidFolder).ToArray()))
+                      .Select(AssetDatabase.GUIDToAssetPath)
+                      .Select(AssetDatabase.LoadAssetAtPath<GameObject>)
+                      .FirstOrDefault(p => p != null);
+    }
+
     private static void CreateArenaFloorAndWalls(Transform parent, float width, float length, float floorThickness, float wallHeight, float wallThickness)
     {
         var rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
-        Shader lit = rp == null
-            ? Shader.Find("Standard")
-            : (Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("HDRP/Lit") ?? Shader.Find("Standard"));
+        Shader lit = rp ? (Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("HDRP/Lit")) : Shader.Find("Standard");
+        if (!lit) { Debug.LogWarning("Could not find a Lit shader."); return; }
 
-        // Floor (Plane 10x10, scale agar sesuai ukuran)
         var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
         floor.name = "Floor";
         floor.transform.SetParent(parent);
-        floor.transform.position = Vector3.zero;
         floor.transform.localScale = new Vector3(width / 10f, 1f, length / 10f);
-        var fr = floor.GetComponent<MeshRenderer>();
-        if (fr && lit)
-        {
-            var m = new Material(lit) { color = new Color(0.35f, 0.5f, 0.35f, 1f) };
-            fr.sharedMaterial = m;
-        }
+        floor.GetComponent<MeshRenderer>().sharedMaterial = new Material(lit) { color = new Color(0.35f, 0.5f, 0.35f, 1f) };
 
-        // Walls
-        void MakeWall(Vector3 pos, Vector3 scale)
-        {
+        void MakeWall(Vector3 pos, Vector3 scale) {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Wall";
             go.transform.SetParent(parent);
             go.transform.position = pos;
             go.transform.localScale = scale;
-            var mr = go.GetComponent<MeshRenderer>();
-            if (mr && lit)
-            {
-                var m = new Material(lit) { color = new Color(0.5f, 0.5f, 0.55f, 1f) };
-                mr.sharedMaterial = m;
-            }
+            go.GetComponent<MeshRenderer>().sharedMaterial = new Material(lit) { color = new Color(0.5f, 0.5f, 0.55f, 1f) };
         }
 
-        // Utara/Selatan/Timur/Barat
         MakeWall(new Vector3(0, wallHeight * 0.5f,  length * 0.5f), new Vector3(width, wallHeight, wallThickness));
         MakeWall(new Vector3(0, wallHeight * 0.5f, -length * 0.5f), new Vector3(width, wallHeight, wallThickness));
         MakeWall(new Vector3( width * 0.5f, wallHeight * 0.5f, 0), new Vector3(wallThickness, wallHeight, length));
@@ -237,24 +249,18 @@ public static class BossEpicSceneBuilder
     private static void ApplyDefaultLitMaterials(GameObject root)
     {
         if (!root) return;
-        var renderers = root.GetComponentsInChildren<Renderer>(true);
         var rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
-        Shader lit = rp == null
-            ? Shader.Find("Standard")
-            : (Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("HDRP/Lit") ?? Shader.Find("Standard"));
+        Shader lit = rp ? (Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("HDRP/Lit")) : Shader.Find("Standard");
         if (!lit) return;
 
-        foreach (var r in renderers)
+        foreach (var r in root.GetComponentsInChildren<Renderer>(true))
         {
-            if (!r) continue;
-            var mats = r.sharedMaterials;
-            bool hasNull = mats == null || mats.Length == 0 || System.Array.Exists(mats, m => m == null);
-            if (hasNull)
+            if (r && (r.sharedMaterials == null || r.sharedMaterials.Any(m => m == null)))
             {
-                var m = new Material(lit) { color = new Color(0.7f, 0.7f, 0.75f, 1f) };
-                r.sharedMaterial = m;
+                r.sharedMaterial = new Material(lit) { color = new Color(0.7f, 0.7f, 0.75f, 1f) };
             }
         }
     }
 }
+
 #endif

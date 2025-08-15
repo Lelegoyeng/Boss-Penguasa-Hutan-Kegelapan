@@ -1,88 +1,176 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(WizardAnimationController))]
 public class WizardSimpleController : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 4f;
+    public float walkSpeed = 2f;
+    public float runSpeed = 5f;
     public float rotationSpeed = 12f;
-    public float gravity = -9.81f;
+    public float jumpHeight = 1.5f;
+    public float gravity = -15f;
+    public float groundCheckDistance = 0.3f;
+    public LayerMask groundMask;
 
-    [Header("Animation")]
-    public float moveThreshold = 0.1f;
+    [Header("Combat")]
+    public float attackCooldown = 0.5f;
+    private float _lastAttackTime;
+    private int _attackCombo;
+    private bool _isDefending;
+    private bool _isAttacking;
 
-    private CharacterController _cc;
-    private Animator _anim;
+    // Components
+    private CharacterController _characterController;
+    private WizardAnimationController _animationController;
+    private Transform _cameraTransform;
+
+    // Input
+    private PlayerControls _playerControls;
+    private Vector2 _moveInput;
+    
+    // Movement
     private float _verticalVel;
+    private bool _isGrounded;
+    private Vector3 _moveDirection;
+    private float _currentSpeed;
 
     void Awake()
     {
-        _cc = GetComponent<CharacterController>();
-        _anim = GetComponent<Animator>();
-        if (_cc && _cc.center == Vector3.zero)
+        _characterController = GetComponent<CharacterController>();
+        _animationController = GetComponent<WizardAnimationController>();
+        _cameraTransform = Camera.main.transform;
+
+        _playerControls = new PlayerControls();
+        
+        // Initialize character controller if needed
+        if (_characterController && _characterController.center == Vector3.zero)
         {
-            _cc.center = new Vector3(0, 1, 0);
-            _cc.height = 2f;
-            _cc.radius = 0.3f;
+            _characterController.center = new Vector3(0, 1, 0);
+            _characterController.height = 1.8f;
+            _characterController.radius = 0.3f;
         }
+    }
+
+    private void OnEnable()
+    {
+        _playerControls.Player.Enable();
+        _playerControls.Player.Jump.performed += OnJump;
+        _playerControls.Player.Attack.performed += OnAttack;
+        _playerControls.Player.Defend.performed += OnDefend;
+        _playerControls.Player.Defend.canceled += OnDefendCanceled;
+    }
+
+    private void OnDisable()
+    {
+        _playerControls.Player.Disable();
+        _playerControls.Player.Jump.performed -= OnJump;
+        _playerControls.Player.Attack.performed -= OnAttack;
+        _playerControls.Player.Defend.performed -= OnDefend;
+        _playerControls.Player.Defend.canceled -= OnDefendCanceled;
     }
 
     void Update()
     {
-        Vector2 input = ReadMoveInput();
-        Vector3 dir = new Vector3(input.x, 0, input.y);
-        dir = Vector3.ClampMagnitude(dir, 1f);
-
-        // camera-relative
-        if (Camera.main)
-        {
-            Vector3 camF = Camera.main.transform.forward; camF.y = 0; camF.Normalize();
-            Vector3 camR = Camera.main.transform.right; camR.y = 0; camR.Normalize();
-            dir = camF * dir.z + camR * dir.x;
-        }
-
-        // rotate
-        if (dir.sqrMagnitude > 0.0001f)
-        {
-            Quaternion targetRot = Quaternion.LookRotation(dir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
-        }
-
-        // gravity
-        if (_cc.isGrounded && _verticalVel < 0) _verticalVel = -2f;
-        _verticalVel += gravity * Time.deltaTime;
-
-        Vector3 velocity = dir * moveSpeed;
-        velocity.y = _verticalVel;
-        _cc.Move(velocity * Time.deltaTime);
-
-        // animation (drive by Speed parameter only)
-        if (_anim)
-        {
-            float speed = new Vector2(velocity.x, velocity.z).magnitude;
-            _anim.SetFloat("Speed", speed);
-        }
+        HandleGravity();
+        HandleMovement();
+        UpdateAnimation();
     }
 
-    private Vector2 ReadMoveInput()
+    void HandleGravity()
     {
-#if ENABLE_INPUT_SYSTEM
-        var keyboard = UnityEngine.InputSystem.Keyboard.current;
-        var gamepad = UnityEngine.InputSystem.Gamepad.current;
-        float x = 0f, y = 0f;
-        if (gamepad != null)
+        _isGrounded = Physics.CheckSphere(transform.position, groundCheckDistance, groundMask, QueryTriggerInteraction.Ignore);
+        
+        if (_isGrounded && _verticalVel < 0)
         {
-            var ls = gamepad.leftStick.ReadValue();
-            x = ls.x; y = ls.y;
+            _verticalVel = -2f;
         }
-        else if (keyboard != null)
-        {
-            x = (keyboard.dKey.isPressed ? 1f : 0f) + (keyboard.aKey.isPressed ? -1f : 0f);
-            y = (keyboard.wKey.isPressed ? 1f : 0f) + (keyboard.sKey.isPressed ? -1f : 0f);
-        }
-        return new Vector2(Mathf.Clamp(x, -1f, 1f), Mathf.Clamp(y, -1f, 1f));
-#else
-        return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-#endif
+        _verticalVel += gravity * Time.deltaTime;
+        _characterController.Move(Vector3.up * (_verticalVel * Time.deltaTime));
     }
+
+    void HandleMovement()
+    {
+        if (_isAttacking) return;
+
+        _moveInput = _playerControls.Player.Move.ReadValue<Vector2>();
+
+        Vector3 forward = _cameraTransform.forward;
+        Vector3 right = _cameraTransform.right;
+        forward.y = 0f;
+        right.y = 0f;
+        forward.Normalize();
+        right.Normalize();
+
+        _moveDirection = (forward * _moveInput.y + right * _moveInput.x).normalized;
+
+        if (_moveDirection.magnitude > 0.1f)
+        {
+            float targetAngle = Mathf.Atan2(_moveDirection.x, _moveDirection.z) * Mathf.Rad2Deg;
+            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref rotationSpeed, 0.1f);
+            transform.rotation = Quaternion.Euler(0, angle, 0);
+
+            if (!_isDefending)
+            {
+                // Note: Running is not implemented in the input actions, using walkSpeed.
+                _currentSpeed = walkSpeed;
+                _characterController.Move(_moveDirection * (_currentSpeed * Time.deltaTime));
+            }
+        }
+        else
+        {
+            _currentSpeed = 0f;
+        }
+    }
+
+    private void OnJump(InputAction.CallbackContext context)
+    {
+        if (_isGrounded)
+        {
+            _verticalVel = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            _animationController.TriggerJump();
+        }
+    }
+
+    private void OnAttack(InputAction.CallbackContext context)
+    {
+        if (!_isAttacking && Time.time > _lastAttackTime + attackCooldown)
+        {
+            _isAttacking = true;
+            _attackCombo = (_attackCombo % 3) + 1; // Cycle through 3 attack combos
+            _animationController.TriggerAttack(_attackCombo);
+            _lastAttackTime = Time.time;
+
+            // Reset attack state after animation (ideally, use animation events)
+            Invoke(nameof(ResetAttack), 0.5f);
+        }
+    }
+
+    private void OnDefend(InputAction.CallbackContext context)
+    {
+        _isDefending = true;
+        _animationController.SetDefending(true);
+    }
+
+    private void OnDefendCanceled(InputAction.CallbackContext context)
+    {
+        _isDefending = false;
+        _animationController.SetDefending(false);
+    }
+
+    void ResetAttack()
+    {
+        _isAttacking = false;
+    }
+
+    void UpdateAnimation()
+    {
+        if (_animationController == null) return;
+        
+        // Update speed in animation controller
+        float speed = _moveDirection.magnitude;
+        _animationController.SetSpeed(speed);
+    }
+
 }
