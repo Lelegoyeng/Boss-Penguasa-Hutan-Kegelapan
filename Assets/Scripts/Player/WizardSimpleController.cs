@@ -20,6 +20,8 @@ public class WizardSimpleController : MonoBehaviour
     private int _attackCombo;
     private bool _isDefending;
     private bool _isAttacking;
+    private AudioSource _audioSource;
+    private AudioClip _defendSFX;
 
     // Components
     private CharacterController _characterController;
@@ -41,8 +43,14 @@ public class WizardSimpleController : MonoBehaviour
         _characterController = GetComponent<CharacterController>();
         _animationController = GetComponent<WizardAnimationController>();
         _cameraTransform = Camera.main.transform;
+        _audioSource = GetComponent<AudioSource>();
+        if (_audioSource == null)
+        {
+            _audioSource = gameObject.AddComponent<AudioSource>();
+        }
+        _audioSource.volume = 1.0f; // Set volume to max
+        _defendSFX = Resources.Load<AudioClip>("shield");
 
-        _playerControls = new PlayerControls();
         
         // Initialize character controller if needed
         if (_characterController && _characterController.center == Vector3.zero)
@@ -55,6 +63,10 @@ public class WizardSimpleController : MonoBehaviour
 
     private void OnEnable()
     {
+        if (_playerControls == null)
+        {
+            _playerControls = new PlayerControls();
+        }
         _playerControls.Player.Enable();
         _playerControls.Player.Jump.performed += OnJump;
         _playerControls.Player.Attack.performed += OnAttack;
@@ -64,11 +76,14 @@ public class WizardSimpleController : MonoBehaviour
 
     private void OnDisable()
     {
-        _playerControls.Player.Disable();
-        _playerControls.Player.Jump.performed -= OnJump;
-        _playerControls.Player.Attack.performed -= OnAttack;
-        _playerControls.Player.Defend.performed -= OnDefend;
-        _playerControls.Player.Defend.canceled -= OnDefendCanceled;
+        if (_playerControls != null)
+        {
+            _playerControls.Player.Disable();
+            _playerControls.Player.Jump.performed -= OnJump;
+            _playerControls.Player.Attack.performed -= OnAttack;
+            _playerControls.Player.Defend.performed -= OnDefend;
+            _playerControls.Player.Defend.canceled -= OnDefendCanceled;
+        }
     }
 
     void Update()
@@ -151,6 +166,12 @@ public class WizardSimpleController : MonoBehaviour
     {
         _isDefending = true;
         _animationController.SetDefending(true);
+
+        // Play SFX
+        if (_defendSFX != null && _audioSource != null)
+        {
+            _audioSource.PlayOneShot(_defendSFX);
+        }
     }
 
     private void OnDefendCanceled(InputAction.CallbackContext context)

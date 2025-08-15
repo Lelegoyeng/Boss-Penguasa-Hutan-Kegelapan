@@ -43,17 +43,24 @@ public class ThirdPersonFollow : MonoBehaviour
 
     private void Awake()
     {
-        _playerControls = new PlayerControls();
+        // Initialization moved to OnEnable
     }
 
     private void OnEnable()
     {
+        if (_playerControls == null)
+        {
+            _playerControls = new PlayerControls();
+        }
         _playerControls.Player.Enable();
     }
 
     private void OnDisable()
     {
-        _playerControls.Player.Disable();
+        if (_playerControls != null)
+        {
+            _playerControls.Player.Disable();
+        }
     }
 
     private void Start()
