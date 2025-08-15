@@ -171,6 +171,7 @@ public class WizardSimpleController : MonoBehaviour
         // Update speed in animation controller
         float speed = _moveDirection.magnitude;
         _animationController.SetSpeed(speed);
+        _animationController.SetGrounded(_isGrounded);
     }
 
 }

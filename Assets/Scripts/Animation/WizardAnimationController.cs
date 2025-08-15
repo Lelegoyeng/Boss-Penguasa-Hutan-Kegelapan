@@ -24,14 +24,10 @@ public class WizardAnimationController : MonoBehaviour
         _characterController = GetComponent<CharacterController>();
     }
 
-    private void Update()
+
+    public void SetGrounded(bool isGrounded)
     {
-        // Update grounded state
-        if (_characterController != null)
-        {
-            bool isGrounded = _characterController.isGrounded;
-            _animator.SetBool(_groundedHash, isGrounded);
-        }
+        _animator.SetBool(_groundedHash, isGrounded);
     }
 
     public void SetSpeed(float speed)

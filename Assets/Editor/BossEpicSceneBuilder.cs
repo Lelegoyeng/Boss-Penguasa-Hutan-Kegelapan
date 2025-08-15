@@ -147,6 +147,8 @@ public static class BossEpicSceneBuilder
         ctrl.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
         ctrl.AddParameter("AttackCombo", AnimatorControllerParameterType.Int);
         ctrl.AddParameter("Defend", AnimatorControllerParameterType.Bool);
+        ctrl.AddParameter("GetHit", AnimatorControllerParameterType.Trigger);
+        ctrl.AddParameter("Die", AnimatorControllerParameterType.Trigger);
 
         var layer = new AnimatorControllerLayer { name = "Base Layer", defaultWeight = 1f };
         var sm = new AnimatorStateMachine { name = "Base Layer", hideFlags = HideFlags.HideInHierarchy };
@@ -204,6 +206,48 @@ public static class BossEpicSceneBuilder
             exitT.exitTime = 0.8f;
             exitT.duration = 0.25f;
             exitT.AddCondition(AnimatorConditionMode.If, 0, "Grounded");
+        }
+
+        // Defend
+        var defendClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("defend"));
+        if (defendClip)
+        {
+            var defendState = sm.AddState("Defend");
+            defendState.motion = defendClip;
+            var t = locomotionState.AddTransition(defendState);
+            t.AddCondition(AnimatorConditionMode.If, 1, "Defend");
+            t.duration = 0.1f;
+            var exitT = defendState.AddTransition(locomotionState);
+            exitT.AddCondition(AnimatorConditionMode.IfNot, 1, "Defend");
+            exitT.duration = 0.1f;
+        }
+
+        // Get Hit
+        var getHitClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("gethit"));
+        if (getHitClip)
+        {
+            var getHitState = sm.AddState("Get Hit");
+            getHitState.motion = getHitClip;
+            var t = sm.AddAnyStateTransition(getHitState);
+            t.AddCondition(AnimatorConditionMode.If, 0, "GetHit");
+            t.duration = 0.1f;
+            t.hasExitTime = false;
+            var exitT = getHitState.AddTransition(locomotionState);
+            exitT.hasExitTime = true;
+            exitT.exitTime = 0.8f;
+            exitT.duration = 0.15f;
+        }
+
+        // Die
+        var dieClip = clips.Values.FirstOrDefault(c => c.name.ToLowerInvariant().Contains("die"));
+        if (dieClip)
+        { 
+            var dieState = sm.AddState("Die");
+            dieState.motion = dieClip;
+            var t = sm.AddAnyStateTransition(dieState);
+            t.AddCondition(AnimatorConditionMode.If, 0, "Die");
+            t.duration = 0.1f;
+            t.hasExitTime = false;
         }
 
         AssetDatabase.SaveAssets();
