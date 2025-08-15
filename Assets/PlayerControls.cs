@@ -82,6 +82,78 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
                     ""expectedControlType"": ""Button"",
                     ""processors"": """",
                     ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell1"",
+                    ""type"": ""Button"",
+                    ""id"": ""a1f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell2"",
+                    ""type"": ""Button"",
+                    ""id"": ""a2f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell3"",
+                    ""type"": ""Button"",
+                    ""id"": ""a3f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell4"",
+                    ""type"": ""Button"",
+                    ""id"": ""a4f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell5"",
+                    ""type"": ""Button"",
+                    ""id"": ""a5f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell6"",
+                    ""type"": ""Button"",
+                    ""id"": ""a6f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell7"",
+                    ""type"": ""Button"",
+                    ""id"": ""a7f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell8"",
+                    ""type"": ""Button"",
+                    ""id"": ""a8f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
+                },
+                {
+                    ""name"": ""SwitchSpell9"",
+                    ""type"": ""Button"",
+                    ""id"": ""a9f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """"
                 }
             ],
             ""bindings"": [
@@ -260,6 +332,105 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
                     ""action"": ""EnableCameraRotation"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b1f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/1"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b2f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/2"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell2"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b3f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/3"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell3"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b4f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/4"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell4"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b5f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/5"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell5"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b6f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/6"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell6"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b7f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/7"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell7"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b8f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/8"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell8"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b9f8b8e8-1b1b-4b1b-8b1b-1b1b1b1b1b1b"",
+                    ""path"": ""<Keyboard>/9"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""SwitchSpell9"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -303,6 +474,15 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
         m_Player_Defend = m_Player.FindAction("Defend", throwIfNotFound: true);
         m_Player_CameraZoom = m_Player.FindAction("CameraZoom", throwIfNotFound: true);
         m_Player_EnableCameraRotation = m_Player.FindAction("EnableCameraRotation", throwIfNotFound: true);
+        m_Player_SwitchSpell1 = m_Player.FindAction("SwitchSpell1", throwIfNotFound: true);
+        m_Player_SwitchSpell2 = m_Player.FindAction("SwitchSpell2", throwIfNotFound: true);
+        m_Player_SwitchSpell3 = m_Player.FindAction("SwitchSpell3", throwIfNotFound: true);
+        m_Player_SwitchSpell4 = m_Player.FindAction("SwitchSpell4", throwIfNotFound: true);
+        m_Player_SwitchSpell5 = m_Player.FindAction("SwitchSpell5", throwIfNotFound: true);
+        m_Player_SwitchSpell6 = m_Player.FindAction("SwitchSpell6", throwIfNotFound: true);
+        m_Player_SwitchSpell7 = m_Player.FindAction("SwitchSpell7", throwIfNotFound: true);
+        m_Player_SwitchSpell8 = m_Player.FindAction("SwitchSpell8", throwIfNotFound: true);
+        m_Player_SwitchSpell9 = m_Player.FindAction("SwitchSpell9", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -371,6 +551,15 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Defend;
     private readonly InputAction m_Player_CameraZoom;
     private readonly InputAction m_Player_EnableCameraRotation;
+    private readonly InputAction m_Player_SwitchSpell1;
+    private readonly InputAction m_Player_SwitchSpell2;
+    private readonly InputAction m_Player_SwitchSpell3;
+    private readonly InputAction m_Player_SwitchSpell4;
+    private readonly InputAction m_Player_SwitchSpell5;
+    private readonly InputAction m_Player_SwitchSpell6;
+    private readonly InputAction m_Player_SwitchSpell7;
+    private readonly InputAction m_Player_SwitchSpell8;
+    private readonly InputAction m_Player_SwitchSpell9;
     public struct PlayerActions
     {
         private @PlayerControls m_Wrapper;
@@ -382,6 +571,15 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
         public InputAction @Defend => m_Wrapper.m_Player_Defend;
         public InputAction @CameraZoom => m_Wrapper.m_Player_CameraZoom;
         public InputAction @EnableCameraRotation => m_Wrapper.m_Player_EnableCameraRotation;
+        public InputAction @SwitchSpell1 => m_Wrapper.m_Player_SwitchSpell1;
+        public InputAction @SwitchSpell2 => m_Wrapper.m_Player_SwitchSpell2;
+        public InputAction @SwitchSpell3 => m_Wrapper.m_Player_SwitchSpell3;
+        public InputAction @SwitchSpell4 => m_Wrapper.m_Player_SwitchSpell4;
+        public InputAction @SwitchSpell5 => m_Wrapper.m_Player_SwitchSpell5;
+        public InputAction @SwitchSpell6 => m_Wrapper.m_Player_SwitchSpell6;
+        public InputAction @SwitchSpell7 => m_Wrapper.m_Player_SwitchSpell7;
+        public InputAction @SwitchSpell8 => m_Wrapper.m_Player_SwitchSpell8;
+        public InputAction @SwitchSpell9 => m_Wrapper.m_Player_SwitchSpell9;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -414,6 +612,33 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
             @EnableCameraRotation.started += instance.OnEnableCameraRotation;
             @EnableCameraRotation.performed += instance.OnEnableCameraRotation;
             @EnableCameraRotation.canceled += instance.OnEnableCameraRotation;
+            @SwitchSpell1.started += instance.OnSwitchSpell1;
+            @SwitchSpell1.performed += instance.OnSwitchSpell1;
+            @SwitchSpell1.canceled += instance.OnSwitchSpell1;
+            @SwitchSpell2.started += instance.OnSwitchSpell2;
+            @SwitchSpell2.performed += instance.OnSwitchSpell2;
+            @SwitchSpell2.canceled += instance.OnSwitchSpell2;
+            @SwitchSpell3.started += instance.OnSwitchSpell3;
+            @SwitchSpell3.performed += instance.OnSwitchSpell3;
+            @SwitchSpell3.canceled += instance.OnSwitchSpell3;
+            @SwitchSpell4.started += instance.OnSwitchSpell4;
+            @SwitchSpell4.performed += instance.OnSwitchSpell4;
+            @SwitchSpell4.canceled += instance.OnSwitchSpell4;
+            @SwitchSpell5.started += instance.OnSwitchSpell5;
+            @SwitchSpell5.performed += instance.OnSwitchSpell5;
+            @SwitchSpell5.canceled += instance.OnSwitchSpell5;
+            @SwitchSpell6.started += instance.OnSwitchSpell6;
+            @SwitchSpell6.performed += instance.OnSwitchSpell6;
+            @SwitchSpell6.canceled += instance.OnSwitchSpell6;
+            @SwitchSpell7.started += instance.OnSwitchSpell7;
+            @SwitchSpell7.performed += instance.OnSwitchSpell7;
+            @SwitchSpell7.canceled += instance.OnSwitchSpell7;
+            @SwitchSpell8.started += instance.OnSwitchSpell8;
+            @SwitchSpell8.performed += instance.OnSwitchSpell8;
+            @SwitchSpell8.canceled += instance.OnSwitchSpell8;
+            @SwitchSpell9.started += instance.OnSwitchSpell9;
+            @SwitchSpell9.performed += instance.OnSwitchSpell9;
+            @SwitchSpell9.canceled += instance.OnSwitchSpell9;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -439,6 +664,33 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
             @EnableCameraRotation.started -= instance.OnEnableCameraRotation;
             @EnableCameraRotation.performed -= instance.OnEnableCameraRotation;
             @EnableCameraRotation.canceled -= instance.OnEnableCameraRotation;
+            @SwitchSpell1.started -= instance.OnSwitchSpell1;
+            @SwitchSpell1.performed -= instance.OnSwitchSpell1;
+            @SwitchSpell1.canceled -= instance.OnSwitchSpell1;
+            @SwitchSpell2.started -= instance.OnSwitchSpell2;
+            @SwitchSpell2.performed -= instance.OnSwitchSpell2;
+            @SwitchSpell2.canceled -= instance.OnSwitchSpell2;
+            @SwitchSpell3.started -= instance.OnSwitchSpell3;
+            @SwitchSpell3.performed -= instance.OnSwitchSpell3;
+            @SwitchSpell3.canceled -= instance.OnSwitchSpell3;
+            @SwitchSpell4.started -= instance.OnSwitchSpell4;
+            @SwitchSpell4.performed -= instance.OnSwitchSpell4;
+            @SwitchSpell4.canceled -= instance.OnSwitchSpell4;
+            @SwitchSpell5.started -= instance.OnSwitchSpell5;
+            @SwitchSpell5.performed -= instance.OnSwitchSpell5;
+            @SwitchSpell5.canceled -= instance.OnSwitchSpell5;
+            @SwitchSpell6.started -= instance.OnSwitchSpell6;
+            @SwitchSpell6.performed -= instance.OnSwitchSpell6;
+            @SwitchSpell6.canceled -= instance.OnSwitchSpell6;
+            @SwitchSpell7.started -= instance.OnSwitchSpell7;
+            @SwitchSpell7.performed -= instance.OnSwitchSpell7;
+            @SwitchSpell7.canceled -= instance.OnSwitchSpell7;
+            @SwitchSpell8.started -= instance.OnSwitchSpell8;
+            @SwitchSpell8.performed -= instance.OnSwitchSpell8;
+            @SwitchSpell8.canceled -= instance.OnSwitchSpell8;
+            @SwitchSpell9.started -= instance.OnSwitchSpell9;
+            @SwitchSpell9.performed -= instance.OnSwitchSpell9;
+            @SwitchSpell9.canceled -= instance.OnSwitchSpell9;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -483,5 +735,14 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
         void OnDefend(InputAction.CallbackContext context);
         void OnCameraZoom(InputAction.CallbackContext context);
         void OnEnableCameraRotation(InputAction.CallbackContext context);
+        void OnSwitchSpell1(InputAction.CallbackContext context);
+        void OnSwitchSpell2(InputAction.CallbackContext context);
+        void OnSwitchSpell3(InputAction.CallbackContext context);
+        void OnSwitchSpell4(InputAction.CallbackContext context);
+        void OnSwitchSpell5(InputAction.CallbackContext context);
+        void OnSwitchSpell6(InputAction.CallbackContext context);
+        void OnSwitchSpell7(InputAction.CallbackContext context);
+        void OnSwitchSpell8(InputAction.CallbackContext context);
+        void OnSwitchSpell9(InputAction.CallbackContext context);
     }
 }

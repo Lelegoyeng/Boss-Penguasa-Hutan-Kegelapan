@@ -4,14 +4,117 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
+using System.IO;
 
 public static class BossEpicSceneBuilder
 {
+    private static void CreateSpellBarUI(WizardSimpleController wizardController)
+    {
+        // Create Canvas and EventSystem
+        var canvasGO = new GameObject("SpellCanvas");
+        var canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvasGO.AddComponent<CanvasScaler>();
+        canvasGO.AddComponent<GraphicRaycaster>();
+
+        var eventSystemGO = new GameObject("EventSystem");
+        eventSystemGO.AddComponent<EventSystem>();
+        eventSystemGO.AddComponent<InputSystemUIInputModule>();
+
+        // Create SpellBar Panel
+        var panelGO = new GameObject("SpellBarPanel");
+        panelGO.transform.SetParent(canvasGO.transform, false);
+        var panelRect = panelGO.AddComponent<RectTransform>();
+        
+        // Anchor to top right corner
+        panelRect.anchorMin = new Vector2(1, 1);
+        panelRect.anchorMax = new Vector2(1, 1);
+        panelRect.pivot = new Vector2(1, 1);
+        panelRect.anchoredPosition = new Vector2(-20, -20); // Padding from corner
+        panelRect.sizeDelta = new Vector2(300, 60); // Smaller size for 5 slots
+
+        var hlg = panelGO.AddComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+        hlg.padding = new RectOffset(5, 5, 5, 5); // Reduced padding
+        hlg.spacing = 10; // Reduced spacing
+
+        var spellBarUI = panelGO.AddComponent<SpellBarUI>();
+        spellBarUI.container = panelGO.transform;
+
+        // Create SpellSlot Prefab
+        var slotPrefab = CreateSpellSlotPrefab();
+        spellBarUI.spellSlotPrefab = slotPrefab;
+
+        // Link UI to Wizard Controller
+        wizardController.spellBarUI = spellBarUI;
+    }
+
+    private static GameObject CreateSpellSlotPrefab()
+    {
+        // Create the hierarchy
+        var slotGO = new GameObject("SpellSlot");
+        var slotRect = slotGO.AddComponent<RectTransform>();
+        slotRect.sizeDelta = new Vector2(50, 50); // Smaller slot size
+        slotGO.AddComponent<Image>().color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+        var slotUI = slotGO.AddComponent<SpellSlotUI>();
+
+        var highlightGO = new GameObject("Highlight");
+        highlightGO.transform.SetParent(slotGO.transform, false);
+        var highlightRect = highlightGO.AddComponent<RectTransform>();
+        highlightRect.sizeDelta = new Vector2(50, 50); // Match smaller size
+        var highlightImage = highlightGO.AddComponent<Image>();
+        highlightImage.color = new Color(1f, 0.8f, 0f, 0.6f);
+        highlightImage.enabled = false;
+
+        var iconGO = new GameObject("Icon");
+        iconGO.transform.SetParent(slotGO.transform, false);
+        var iconRect = iconGO.AddComponent<RectTransform>();
+        iconRect.sizeDelta = new Vector2(45, 45); // Smaller icon
+        var iconImage = iconGO.AddComponent<Image>();
+
+        var keyTextGO = new GameObject("KeyText");
+        keyTextGO.transform.SetParent(slotGO.transform, false);
+        var keyTextRect = keyTextGO.AddComponent<RectTransform>();
+        keyTextRect.sizeDelta = new Vector2(15, 15); // Smaller text box
+        keyTextRect.anchorMin = new Vector2(1, 0);
+        keyTextRect.anchorMax = new Vector2(1, 0);
+        keyTextRect.pivot = new Vector2(1, 0);
+        keyTextRect.anchoredPosition = new Vector2(-2, 2); // Adjust position
+        var keyText = keyTextGO.AddComponent<Text>();
+        keyText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        keyText.fontSize = 12; // Smaller font size
+        keyText.alignment = TextAnchor.MiddleCenter;
+        keyText.color = Color.white;
+
+        // Link components to script
+        slotUI.iconImage = iconImage;
+        slotUI.highlightImage = highlightImage;
+        slotUI.keyText = keyText;
+
+        // Create Prefab
+        string dirPath = "Assets/Resources/UI";
+        if (!AssetDatabase.IsValidFolder(dirPath))
+        {
+            AssetDatabase.CreateFolder("Assets/Resources", "UI");
+        }
+        string prefabPath = dirPath + "/SpellSlot.prefab";
+        GameObject prefab = PrefabUtility.SaveAsPrefabAsset(slotGO, prefabPath);
+        Object.DestroyImmediate(slotGO);
+
+        return prefab;
+    }
+
     [MenuItem("Tools/Create Boss Epic Scene", priority = 0)]
     public static void CreateBossEpic()
     {
         try
         {
+            // First, ensure default spells exist to prevent runtime errors.
+            CreateDefaultSpells();
+
             EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
             var arenaRoot = new GameObject("Arena");
@@ -21,6 +124,11 @@ public static class BossEpicSceneBuilder
                                           new[] { "Assets/WizzardPoliArt", "Assets/WizardPolyArt", "Assets" });
 
             GameObject player = SetupPlayer(wizardPrefab);
+            var wizardController = player.GetComponent<WizardSimpleController>();
+            if (wizardController != null)
+            {
+                CreateSpellBarUI(wizardController);
+            }
             Camera mainCamera = SetupCamera(player.transform);
 
             SetupDragon();
@@ -304,6 +412,164 @@ public static class BossEpicSceneBuilder
                 r.sharedMaterial = new Material(lit) { color = new Color(0.7f, 0.7f, 0.75f, 1f) };
             }
         }
+    }
+
+    private static void CreateDefaultSpells()
+    {
+        string spellDir = "Assets/Resources/Spells";
+        if (!Directory.Exists(spellDir))
+        {
+            Directory.CreateDirectory(spellDir);
+        }
+
+        // Define spells with dramatic scaling
+        if (!File.Exists($"{spellDir}/Fireball.asset"))
+        {
+            CreateSpellAsset(
+                spellName: "Fireball",
+                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Flare.png",
+                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Red energy explosion.prefab",
+                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Explosion.prefab",
+                castSoundPath: "Assets/Resources/Sounds/cast_fire.mp3",
+                hitSoundPath: "Assets/Resources/Sounds/hit_fire.mp3",
+                projectileScale: 2.5f,
+                hitEffectScale: 3.0f
+            );
+        }
+
+        if (!File.Exists($"{spellDir}/IceShard.asset"))
+        {
+            CreateSpellAsset(
+                spellName: "Ice Shard",
+                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Snowflake.png",
+                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Snow AOE.prefab",
+                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Snow hit.prefab",
+                castSoundPath: "Assets/Resources/Sounds/cast_ice.mp3",
+                hitSoundPath: "Assets/Resources/Sounds/hit_ice.mp3",
+                projectileScale: 2.0f,
+                hitEffectScale: 2.5f
+            );
+        }
+
+        if (!File.Exists($"{spellDir}/ElectroShock.asset"))
+        {
+            CreateSpellAsset(
+                spellName: "Electro Shock",
+                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Electro.png",
+                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Electro hit.prefab",
+                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Electro hit.prefab",
+                castSoundPath: "Assets/Resources/Sounds/cast_electro.mp3",
+                hitSoundPath: "Assets/Resources/Sounds/hit_electro.mp3",
+                projectileScale: 1.5f,
+                hitEffectScale: 3.5f
+            );
+        }
+
+        if (!File.Exists($"{spellDir}/HolyLight.asset"))
+        {
+            CreateSpellAsset(
+                spellName: "Holy Light",
+                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Star.png",
+                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
+                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
+                castSoundPath: "",
+                hitSoundPath: "",
+                projectileScale: 2.0f,
+                hitEffectScale: 4.0f
+            );
+        }
+
+        if (!File.Exists($"{spellDir}/StoneBullet.asset"))
+        {
+            CreateSpellAsset(
+                spellName: "Stone Bullet",
+                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Stone.png",
+                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Stones hit.prefab",
+                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Stones hit.prefab",
+                castSoundPath: "",
+                hitSoundPath: "",
+                projectileScale: 3.0f,
+                hitEffectScale: 3.0f
+            );
+        }
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("Default spell assets checked/created successfully with new scaling.");
+    }
+
+    private static void CreateSpellAsset(string spellName, string iconPath, string projectilePath, string hitEffectPath, string castSoundPath, string hitSoundPath, float projectileScale = 1f, float hitEffectScale = 1f)
+    {
+        // --- Robust Asset Loading --- 
+        bool allAssetsFound = true;
+
+        TextureImporter textureImporter = AssetImporter.GetAtPath(iconPath) as TextureImporter;
+        if (textureImporter != null)
+        {
+            if (textureImporter.textureType != TextureImporterType.Sprite)
+            {
+                textureImporter.textureType = TextureImporterType.Sprite;
+                AssetDatabase.ImportAsset(iconPath, ImportAssetOptions.ForceUpdate);
+                Debug.Log($"Changed texture type to Sprite for icon: {iconPath}");
+            }
+        }
+
+        Texture2D iconTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(iconPath);
+        if (iconTexture == null) { Debug.LogError($"[Spell Creation] Failed to load icon for '{spellName}' at: {iconPath}"); allAssetsFound = false; }
+
+        GameObject projectilePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(projectilePath);
+        if (projectilePrefab == null) 
+        { 
+            Debug.LogError($"[Spell Creation] Failed to load projectile prefab for '{spellName}' at: {projectilePath}"); 
+            allAssetsFound = false; 
+        }
+        else
+        {
+            // Ensure the projectile prefab has the Projectile script
+            if (projectilePrefab.GetComponent<Projectile>() == null)
+            {
+                // This is a complex operation on a prefab asset. We need to open it, modify, and save.
+                GameObject prefabContents = PrefabUtility.LoadPrefabContents(projectilePath);
+                prefabContents.AddComponent<Projectile>();
+                PrefabUtility.SaveAsPrefabAsset(prefabContents, projectilePath);
+                PrefabUtility.UnloadPrefabContents(prefabContents);
+                Debug.Log($"Added 'Projectile.cs' script to prefab: {projectilePrefab.name}");
+            }
+        }
+
+        GameObject hitEffect = AssetDatabase.LoadAssetAtPath<GameObject>(hitEffectPath);
+        if (hitEffect == null) { Debug.LogError($"[Spell Creation] Failed to load hit effect for '{spellName}' at: {hitEffectPath}"); allAssetsFound = false; }
+
+        AudioClip castSound = AssetDatabase.LoadAssetAtPath<AudioClip>(castSoundPath);
+        if (castSound == null) { Debug.LogWarning($"[Spell Creation] Failed to load cast sound for '{spellName}' at: {castSoundPath}"); }
+
+        AudioClip hitSound = AssetDatabase.LoadAssetAtPath<AudioClip>(hitSoundPath);
+        if (hitSound == null) { Debug.LogWarning($"[Spell Creation] Failed to load hit sound for '{spellName}' at: {hitSoundPath}"); }
+
+        if (!allAssetsFound)
+        {
+            Debug.LogError($"--- CANNOT CREATE SPELL '{spellName}' due to missing critical assets. Please check paths. ---");
+            return;
+        }
+
+        // --- Create and Configure Spell --- 
+        Spell newSpell = ScriptableObject.CreateInstance<Spell>();
+        newSpell.spellName = spellName;
+        newSpell.cooldown = 1.5f;
+        newSpell.speed = 25f;
+        newSpell.lifeTime = 3f;
+
+        newSpell.icon = Sprite.Create(iconTexture, new Rect(0, 0, iconTexture.width, iconTexture.height), new Vector2(0.5f, 0.5f));
+        newSpell.projectilePrefab = projectilePrefab;
+        newSpell.hitEffect = hitEffect;
+        newSpell.castSound = castSound;
+        newSpell.hitSound = hitSound;
+        newSpell.projectileScale = projectileScale;
+        newSpell.hitEffectScale = hitEffectScale;
+
+        string assetPath = $"Assets/Resources/Spells/{spellName.Replace(" ", "")}.asset";
+        AssetDatabase.CreateAsset(newSpell, assetPath);
+        Debug.Log($"Successfully created spell: {spellName}");
     }
 }
 
