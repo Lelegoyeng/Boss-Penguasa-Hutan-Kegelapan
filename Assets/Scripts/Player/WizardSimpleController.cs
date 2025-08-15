@@ -260,7 +260,28 @@ public class WizardSimpleController : MonoBehaviour
 
         if (currentSpell.projectilePrefab != null)
         {
-            GameObject projectileGO = Instantiate(currentSpell.projectilePrefab, spellCastPoint.position, _cameraTransform.rotation);
+            // --- Logika Bidikan Baru untuk Tembakan Lurus ---
+            Vector3 targetPoint;
+            Ray ray = _cameraTransform.GetComponent<Camera>().ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+            if (Physics.Raycast(ray, out RaycastHit hit, 999f, ~groundMask)) // Abaikan ground layer jika perlu
+            {
+                targetPoint = hit.point;
+            }
+            else
+            {
+                targetPoint = ray.GetPoint(100);
+            }
+
+            Vector3 direction = (targetPoint - spellCastPoint.position).normalized;
+            Quaternion rotation = Quaternion.LookRotation(direction);
+
+            // Perbaikan: Tambahkan rotasi korektif untuk prefab tertentu
+            if (currentSpell.projectilePrefab.name.Contains("Crystals front attack"))
+            {
+                rotation *= Quaternion.Euler(0, 0, 0);
+            }
+
+            GameObject projectileGO = Instantiate(currentSpell.projectilePrefab, spellCastPoint.position, rotation);
             projectileGO.transform.localScale *= currentSpell.projectileScale;
 
             Projectile p = projectileGO.GetComponent<Projectile>();

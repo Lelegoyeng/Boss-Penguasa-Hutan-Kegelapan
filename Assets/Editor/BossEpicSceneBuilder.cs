@@ -440,70 +440,83 @@ public static class BossEpicSceneBuilder
             CreateSpellAsset(
                 spellName: "Fireball",
                 iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Flare.png",
-                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Red energy explosion.prefab",
-                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Explosion.prefab",
+                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Crystals front attack.prefab",
+                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Crystals front attack.prefab",
                 castSoundPath: "Assets/Resources/Sounds/cast_fire.mp3",
                 hitSoundPath: "Assets/Resources/Sounds/hit_fire.mp3",
-                projectileScale: 0.5f,
-                hitEffectScale: 1.0f
-            );
+                projectileScale: 1.5f
+                            );
         }
 
-        if (!File.Exists($"{spellDir}/IceShard.asset"))
-        {
-            CreateSpellAsset(
-                spellName: "Ice Shard",
-                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Snowflake.png",
-                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Snow AOE.prefab",
-                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Snow hit.prefab",
-                castSoundPath: "Assets/Resources/Sounds/cast_ice.mp3",
-                hitSoundPath: "Assets/Resources/Sounds/hit_ice.mp3",
-                projectileScale: 0.5f,
-                hitEffectScale: 1.0f
-            );
-        }
+        //  if (!File.Exists($"{spellDir}/ProjectileFree1.asset"))
+        // {
+        //     CreateSpellAsset(
+        //         spellName: "Fireball",
+        //         iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Flare.png",
+        //         projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Red energy explosion.prefab",
+        //         hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Explosion.prefab",
+        //         castSoundPath: "Assets/Resources/Sounds/cast_fire.mp3",
+        //         hitSoundPath: "Assets/Resources/Sounds/hit_fire.mp3",
+        //         projectileScale: 0.5f,
+        //         hitEffectScale: 1.0f
+        //     );
+        // }
 
-        if (!File.Exists($"{spellDir}/ElectroShock.asset"))
-        {
-            CreateSpellAsset(
-                spellName: "Electro Shock",
-                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Electro.png",
-                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Electro hit.prefab",
-                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Electro hit.prefab",
-                castSoundPath: "Assets/Resources/Sounds/cast_electro.mp3",
-                hitSoundPath: "Assets/Resources/Sounds/hit_electro.mp3",
-                projectileScale: 0.5f,
-                hitEffectScale: 1.0f
-            );
-        }
+        // if (!File.Exists($"{spellDir}/IceShard.asset"))
+        // {
+        //     CreateSpellAsset(
+        //         spellName: "Ice Shard",
+        //         iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Snowflake.png",
+        //         projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/AoE effects/Snow AOE.prefab",
+        //         hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Snow hit.prefab",
+        //         castSoundPath: "Assets/Resources/Sounds/cast_ice.mp3",
+        //         hitSoundPath: "Assets/Resources/Sounds/hit_ice.mp3",
+        //         projectileScale: 0.5f,
+        //         hitEffectScale: 1.0f
+        //     );
+        // }
 
-        if (!File.Exists($"{spellDir}/HolyLight.asset"))
-        {
-            CreateSpellAsset(
-                spellName: "Holy Light",
-                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Star.png",
-                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
-                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
-                castSoundPath: "",
-                hitSoundPath: "",
-                projectileScale: 0.5f,
-                hitEffectScale: 1.0f
-            );
-        }
+        // if (!File.Exists($"{spellDir}/ElectroShock.asset"))
+        // {
+        //     CreateSpellAsset(
+        //         spellName: "Electro Shock",
+        //         iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Electro.png",
+        //         projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Electro hit.prefab",
+        //         hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Electro hit.prefab",
+        //         castSoundPath: "Assets/Resources/Sounds/cast_electro.mp3",
+        //         hitSoundPath: "Assets/Resources/Sounds/hit_electro.mp3",
+        //         projectileScale: 0.5f,
+        //         hitEffectScale: 1.0f
+        //     );
+        // }
 
-        if (!File.Exists($"{spellDir}/StoneBullet.asset"))
-        {
-            CreateSpellAsset(
-                spellName: "Stone Bullet",
-                iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Stone.png",
-                projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Stones hit.prefab",
-                hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Stones hit.prefab",
-                castSoundPath: "",
-                hitSoundPath: "",
-                projectileScale: 0.5f,
-                hitEffectScale: 1.0f
-            );
-        }
+        // if (!File.Exists($"{spellDir}/HolyLight.asset"))
+        // {
+        //     CreateSpellAsset(
+        //         spellName: "Holy Light",
+        //         iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Star.png",
+        //         projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
+        //         hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Holy hit.prefab",
+        //         castSoundPath: "",
+        //         hitSoundPath: "",
+        //         projectileScale: 0.5f,
+        //         hitEffectScale: 1.0f
+        //     );
+        // }
+
+        // if (!File.Exists($"{spellDir}/StoneBullet.asset"))
+        // {
+        //     CreateSpellAsset(
+        //         spellName: "Stone Bullet",
+        //         iconPath: "Assets/Hovl Studio/Magic effects pack/Textures/Stone.png",
+        //         projectilePath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Stones hit.prefab",
+        //         hitEffectPath: "Assets/Hovl Studio/Magic effects pack/Prefabs/Hits and explosions/Stones hit.prefab",
+        //         castSoundPath: "",
+        //         hitSoundPath: "",
+        //         projectileScale: 0.5f,
+        //         hitEffectScale: 1.0f
+        //     );
+        // }
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
